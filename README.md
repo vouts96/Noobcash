@@ -17,7 +17,9 @@ Inside the noobcash directory run:
 
 	pipenv install requests
 
-	pipenv install pycryptodome
+	pipenv install rsa
+
+	pipenv install llist
 	
 Activate the virtual env by running:
 	
