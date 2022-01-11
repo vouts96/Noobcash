@@ -1,14 +1,11 @@
 import binascii
-import node
+#import node
 import string 
 import random
 
 #import Crypto
 #import Crypto.Random
-#from Crypto.Hash import SHA
-from Crypto.PublicKey import RSA
-#from Crypto.Signature import PKCS1_v1_5
-
+import rsa
 import hashlib
 import json
 from time import time
@@ -20,8 +17,7 @@ from uuid import uuid4
 class wallet:
 
 	def __init__(self):
-		##set
-
+		
 		self.public_key = 0
 		self.private_key = 0
 		self.address = 0
@@ -33,22 +29,35 @@ class wallet:
 
 
 def generate_wallet(ip_address):
+	
 	w = wallet()
 
 	w.address = ip_address
 	
-	key = RSA.generate(2048)
-	f = open('mykey.pem','wb')
-	f.write(key.export_key('PEM'))
-	print(key.export_key('PEM'))
-	f.close()
+	w.public_key, w.private_key = rsa.newkeys(512)
 
-	f = open('mykey.pem','r')
-	key = RSA.import_key(f.read())
+	#print(w.public_key)
 	#print(w.private_key)
-	print(key)
 
 	return w
+ 
+	
+
+'''
+def dummy_hash():
+	
+	public_key, private_key = rsa.newkeys(512)
+
+#	data = ['32131', 2232, 43243242, 42342432, 'dsfsdfsd']
+
+	data = 'affsdfsdfsds'.encode()
+	data2 = 'afdsadadafsdfsdfsds'.encode()
+	hash = rsa.compute_hash(data, 'SHA-1')
+	signature = rsa.sign_hash(hash, private_key, 'SHA-1')
+	rsa.verify(data2, signature, public_key)
 
 
-generate_wallet('dasda')
+	print(hash)
+	print(signature)
+
+dummy_hash()'''

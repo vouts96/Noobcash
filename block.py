@@ -2,6 +2,7 @@ from datetime import date, datetime
 import transaction
 
 
+
 class Block:
 	def __init__(self):
 
@@ -14,12 +15,14 @@ class Block:
 
 	
 	
-
+'''
 def calculateHash():
 	#calculate self.hash
 	return 'hi'
 
 def createGenesisBlock():
-	gen = Block()
-	gen.previous_hash = 1
-	
+	genesis = Block()
+	genesis.previous_hash = 1
+
+	return genesis
+	'''
