@@ -47,27 +47,16 @@ def run(PORT):
 			#create genesis transaction for bootstrap node
 			global genesis_transaction
 			genesis_transaction = transaction.Transaction()
-			
 			transaction.create_transaction(genesis_transaction, 0, node.wallet.public_key, node.ip_address, 500, [0], [genesis_transaction.transaction_id, genesis_transaction.sender_address, genesis_transaction.amount])
-			#genesis_transaction.transaction_id = ?
-			#genesis_transaction.sender_address = 0
-			#genesis_transaction.receiver_address = node.wallet.public_key 
-			#genesis_transaction.receiver_ip_address = node.ip_address
-			#genesis_transaction.amount = 500
-			#genesis_transaction.transaction_inputs = [0]
-			#genesis_transaction.transaction_outputs = [genesis_transaction.transaction_id, genesis_transaction.sender_address, genesis_transaction.amount]
-			'''print(genesis_transaction.sender_address)
-			print(genesis_transaction.receiver_address)
-			print(genesis_transaction.receiver_ip_address)
-			print(genesis_transaction.amount)
-			print(genesis_transaction.transaction_inputs)
-			print(genesis_transaction.transaction_outputs)'''
+			
 			print(transaction.stringify(genesis_transaction))
 			if transaction.sign_transaction(genesis_transaction, node.wallet.private_key):
 				print('sign ok')
-			node.wallet.transactions.append(genesis_transaction)
+			node.wallet.transactions.append(genesis_transaction)	# append the genesis transaction to the wallet transactions of bootstrap node
 
-			#transaction.verify_transaction(genesis_transaction, node.wallet.public_key)
+
+			if not transaction.verify_transaction(genesis_transaction, node.wallet.public_key):
+				print('verify ok')
 
 			#create genesis block for bootstrap node
 			global genesis_block
@@ -88,10 +77,10 @@ def index():
 	#print({'NBCs': n.NBC, 'ID': n.current_id_count})
 	#print(n.wallet.public_key)
 	#print(n.wallet.private_key)
-	print(genesis_transaction.transaction_outputs)
+	'''print(genesis_transaction.transaction_outputs)
 	print(genesis_transaction.transaction_inputs)
 	print(genesis_transaction.receiver_ip_address)
-	print(genesis_transaction.transaction_id)
+	print(genesis_transaction.transaction_id)'''
 	return {'NBCs': node.NBC, 'ID': node.current_id_count, 'wallet_address': node.wallet.address, 'wallet_transactions': str(node.wallet.transactions)}
 	#return 'hello', 200
 

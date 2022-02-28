@@ -56,7 +56,7 @@ def verify_transaction(t, pubkey):
     
 
 
-def create_transaction(t, sender_address, receiver_address, receiver_ip_address, amount, inputs):
+def create_transaction(t, sender_address, receiver_address, receiver_ip_address, amount, inputs, outputs):
     #t = Transaction()
     t.sender_address = sender_address    
     t.receiver_address = receiver_address 
