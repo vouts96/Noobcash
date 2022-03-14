@@ -14,7 +14,11 @@ class Block:
 		self.transactions = []
 
 	
-	
+
+def stringify(b):
+	stringed = str(b.index) + str(b.previous_hash) + str(b.nonce) + str(b.timestamp) + str(b.transactions)
+	return stringed
+
 '''
 def calculateHash():
 	#calculate self.hash
