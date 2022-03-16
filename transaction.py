@@ -2,7 +2,12 @@ from collections import OrderedDict
 import rsa
 import block
 import binascii
-
+import json
+from binascii import unhexlify, hexlify
+from hashlib import sha256
+from Crypto.Hash import SHA
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.PublicKey import RSA
 #import Crypto
 #import Crypto.Random
 #from Crypto.Hash import SHA
@@ -37,21 +42,25 @@ class Transaction:
         self.signature = 0
 
 
-def stringify(t):
-    stringed = str(t.sender_address) + str(t.receiver_address) + str(t.receiver_ip_address) + str(t.amount) + str(t.transaction_inputs) + str(t.transaction_outputs)
-    return stringed
+def stringify(self):
+    stringed = str(self.sender_address) + str(self.receiver_address) + str(self.receiver_ip_address) + str(self.amount) + str(self.transaction_inputs) + str(self.transaction_outputs)
+    print(sha256(stringed.encode('ascii')).hexdigest())
+    return sha256(stringed.encode('ascii')).hexdigest()
 
 
-def sign_transaction(t, privkey):
-    stringToHash = stringify(t).encode()
-    t.transaction_id =  rsa.compute_hash(stringToHash, 'SHA-1')
-    t.signature = rsa.sign_hash(t.transaction_id, privkey, 'SHA-1')
+def sign_transaction(self, sender_private_key):
+		signer = PKCS1_v1_5.new(RSA.importKey(unhexlify(sender_private_key)))
+		h = SHA.new(stringify(self).encode('utf8'))
+		self.signature = hexlify(signer.sign(h)).decode('ascii')
+		#print(self.signature)
 
-    return t.signature
+def verify_signature(self, signature):
+    public_key = RSA.importKey(unhexlify(self.sender_address))
+    verifier = PKCS1_v1_5.new(public_key)
+    h = SHA.new(json.dumps(stringify(self)).encode('utf8'))
+    if not verifier.verify(h, unhexlify(signature)):
+        raise ValueError("You are not who you appear to be, mister")
 
-def verify_transaction(t, pubkey):
-    stringToVerify = stringify(t).encode()
-    rsa.verify(stringToVerify, t.signature, pubkey)
 
     
 

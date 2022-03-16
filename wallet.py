@@ -1,4 +1,7 @@
 import binascii
+from binascii import hexlify
+from Crypto.PublicKey import RSA
+
 #import node
 import string 
 import random
@@ -34,7 +37,12 @@ def generate_wallet(ip_address):
 
 	w.address = ip_address
 	
-	w.public_key, w.private_key = rsa.newkeys(512)
+	key = RSA.generate(1024)
+	w.private_key = hexlify(key.exportKey(format='DER')).decode('ascii')
+	pub_key = key.publickey()
+	w.public_key = hexlify(pub_key.exportKey(format='DER')).decode('ascii')
+	#print(w.public_key)
+	#print(w.private_key)
 
 	#print(w.public_key)
 	#print(w.private_key)
