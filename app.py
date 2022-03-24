@@ -1,4 +1,6 @@
 from traceback import print_tb
+from binascii import unhexlify, hexlify
+from hashlib import sha256
 from flask import Flask
 from flask import jsonify 
 from flask import request
@@ -28,12 +30,14 @@ def run(PORT, clients):
 
 	location = ("127.0.0.1", PORT)
 	result_of_check = a_socket.connect_ex(location)
+	
 
 	if result_of_check == 0:
-		print("Port is open: " + str(PORT))
+		print("Port " + str(PORT) + " is in use.")
 		run(PORT+1, clients)
 	else:
-		print("Port is not open: " + str(PORT))
+		print("Port " + str(PORT) + " is not in use.")
+		print("Opening Port " + str(PORT) + "......")
 		global node
 		node = node.Node()
 		node.ip_address = 'http://localhost:' + str(PORT)
@@ -42,31 +46,31 @@ def run(PORT, clients):
 		if PORT == 5000:
 			node.ring.append((node.ip_address, node.wallet.public_key))
 			node.NBC = 100 * clients
+			
 			#create genesis transaction for bootstrap node
-			global genesis_transaction
 			genesis_transaction = transaction.Transaction()
 			transaction.create_transaction(genesis_transaction, 0, node.wallet.public_key, node.ip_address, 100 * clients, [0], [genesis_transaction.transaction_id, genesis_transaction.sender_address, genesis_transaction.amount])
 			
 			#print(transaction.stringify(genesis_transaction))
-			#transaction.sign_transaction(genesis_transaction, node.wallet.private_key)
+			transaction.sign_transaction(genesis_transaction, node.wallet.private_key)
 			
-			#node.wallet.transactions.append(genesis_transaction)	# append the genesis transaction to the wallet transactions of bootstrap node
+			# append the genesis transaction to the wallet transactions of bootstrap node
+			node.wallet.transactions.append(genesis_transaction)	
 
 
 			#if transaction.verify_signature(genesis_transaction, node.wallet.public_key):
 			#	print('verify ok')
 
 			#create genesis block for bootstrap node
-			global genesis_block
 			genesis_block = block.Block()
-
-			genesis_block.index = 0
-			genesis_block.previous_hash = 1
-			genesis_block.nonce = 0
-			genesis_block.transactions = [genesis_transaction]
-			#genesis_block.hash = ?
+			block.create_block(genesis_block, 0, [genesis_transaction], 1)
 		
 		elif PORT != 5000:
+			a_socket.connect(("127.0.0.1",5000))
+			data = "Hello Server!"
+			a_socket.send(data.encode())
+
+
 			url = 'http://localhost:5000' + '/newnode/localhost:' + str(PORT) + '/' + node.wallet.public_key
 			resp = requests.post(url)
 			
@@ -77,7 +81,7 @@ def run(PORT, clients):
 
 @app.route("/", methods = ['GET', 'POST'])
 def index():
-	return {'NBCs': node.NBC, 'ID': node.current_id_count, 'wallet_address': node.wallet.address, 'wallet_transactions': str(node.wallet.transactions), 'ring': node.ring}
+	return {'len': len(node.ring), 'NBCs': node.NBC, 'ID': node.current_id_count, 'wallet_address': node.wallet.address, 'wallet_transactions': str(node.wallet.transactions[0].signature), 'ring': node.ring}
 
 
 
@@ -92,15 +96,20 @@ def new_node(url, public_key):
 
 
 #bootstrap node is informed that all nodes are on the network
+#and also creates transactions to send coins to all nodes
 @app.route("/allnodes/<clients>", methods = ['GET'])
 def allnodes(clients):
-	#urls = []
-	#my_url = node.ip_address
-	#urls.append(my_url)
-	#urls = urls + [j[0] for j in node.ring]
+	#create initial transactions for all nodes except from bootstrap(i = 1)
+	for i in range(1, len(node.ring)):
+		receiver_ip_address = node.ring[i][0]
+		print(receiver_ip_address)
+		receiver_address = node.ring[i][1]
+		print(receiver_address)
+		t = transaction.Transaction()
+		#transaction.create_transaction(t, node.wallet.public_key,)
+	
+	#trigger requests for ring to send urls and public keys
 	urls = [j[0] for j in node.ring]
-	print('urls are: ')
-	print(urls)
 	for i in range(1, (int(clients))):
 		resp = requests.get(urls[i] + '/askforring')
 	
@@ -123,34 +132,20 @@ def ask_for_ring():
 
 #finally bootstrap node returns to each node everyone's addresses
 @app.route("/getring", methods = ['GET'])
-def check_ring():
+def get_ring():
 	urls = []
 	public_keys = []
 	urls = [j[0] for j in node.ring]
 	public_keys = [j[1] for j in node.ring]
 	resp = {'urls': urls, 'public_keys': public_keys}
 	resp_json = json.dumps(resp)
-	#print(resp_json)
-
 	return resp_json
 
 
-
-@app.route("/sendcoins/<id>/<coins>")
-def sendcoins(id, coins):
-	port = 5000 + int(id)
-	#print(port) 
-	url = 'http://localhost:' + str(port) + '/getcoins/' + str(coins)
-	#print(url)
-	resp = requests.get(url)
-	return resp.content
-	
-@app.route("/getcoins/<coins>")
-def getcoins(coins):
-	node.NBC = node.NBC + int(coins)
-	return 'Hey there I am node with id:' + str(node.current_id_count) + ' and I have ' + str(node.NBC) + ' NBC'
-
-
+@app.route("/getfirsttransactions", methods = ['GET'])
+def get_first_transactions():
+	#for i in range(0, len(node.ring)):
+	return "hi"
 
 if __name__ == "__main__":
 	clients = 0
@@ -159,7 +154,6 @@ if __name__ == "__main__":
 		print(usage)
 		exit(0)
 
-	print(f"Arguments count: {len(sys.argv)}")
 	for i, arg in enumerate(sys.argv):
 		if i == 1 and arg != '--clients':
 			print(usage)
