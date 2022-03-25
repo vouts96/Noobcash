@@ -62,11 +62,6 @@ def run(PORT, clients):
 			block.create_block(genesis_block, 0, [genesis_transaction], 1)
 		
 		elif PORT != 5000:
-			a_socket.connect(("127.0.0.1",5000))
-			data = "Hello Server!"
-			a_socket.send(data.encode())
-
-
 			url = 'http://localhost:5000' + '/newnode/localhost:' + str(PORT) + '/' + node.wallet.public_key
 			resp = requests.post(url)
 			
@@ -77,7 +72,7 @@ def run(PORT, clients):
 
 @app.route("/", methods = ['GET', 'POST'])
 def index():
-	return {'len': len(node.ring), 'NBCs': node.NBC, 'ID': node.current_id_count, 'wallet_address': node.wallet.address, 'wallet_transactions': str(node.wallet.transactions[0].signature), 'ring': node.ring}
+	return {'len': len(node.ring), 'NBCs': node.NBC, 'ID': node.current_id_count, 'wallet_address': node.wallet.address, 'ring': node.ring}
 
 
 
@@ -101,8 +96,8 @@ def allnodes(clients):
 		#print(receiver_ip_address)
 		receiver_address = node.ring[i][1]
 		#print(receiver_address)
-		t = transaction.Transaction()
-		transaction.create_transaction(t, node.wallet.public_key, receiver_address, receiver_ip_address, 100, )
+		#t = transaction.Transaction()
+		#transaction.create_transaction(t, node.wallet.public_key, receiver_address, receiver_ip_address, 100, )
 	
 	#trigger requests for ring to send urls and public keys
 	urls = [j[0] for j in node.ring]
