@@ -57,10 +57,6 @@ def run(PORT, clients):
 			# append the genesis transaction to the wallet transactions of bootstrap node
 			node.wallet.transactions.append(genesis_transaction)	
 
-
-			#if transaction.verify_signature(genesis_transaction, node.wallet.public_key):
-			#	print('verify ok')
-
 			#create genesis block for bootstrap node
 			genesis_block = block.Block()
 			block.create_block(genesis_block, 0, [genesis_transaction], 1)
@@ -102,11 +98,11 @@ def allnodes(clients):
 	#create initial transactions for all nodes except from bootstrap(i = 1)
 	for i in range(1, len(node.ring)):
 		receiver_ip_address = node.ring[i][0]
-		print(receiver_ip_address)
+		#print(receiver_ip_address)
 		receiver_address = node.ring[i][1]
-		print(receiver_address)
+		#print(receiver_address)
 		t = transaction.Transaction()
-		#transaction.create_transaction(t, node.wallet.public_key,)
+		transaction.create_transaction(t, node.wallet.public_key, receiver_address, receiver_ip_address, 100, )
 	
 	#trigger requests for ring to send urls and public keys
 	urls = [j[0] for j in node.ring]
