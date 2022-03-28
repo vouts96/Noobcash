@@ -9,7 +9,7 @@ from requests.models import Response
 import json
 #import rsa
 import sys
-
+import time
 
 class Node:
 	def __init__(self, bootstrap, N, ip, port):
@@ -26,7 +26,7 @@ class Node:
 		self.ring = []
 
 		if(bootstrap):
-			print("About to create bootstrap")
+			print("Creating bootstrap node...")
 			bootstrap_vitals = {}
 			bootstrap_vitals["id"] = self.id
 			bootstrap_vitals["address"] = ip + ":" + port
@@ -35,7 +35,6 @@ class Node:
 			self.ring.append(bootstrap_vitals)
 	
 	def create_new_node(self, bootstrap):
-		print('About to create new node...')
 		if(bootstrap == 0):
 			data = {}
 			data["public_key"] = self.wallet.public_key
@@ -43,7 +42,6 @@ class Node:
 			data["port"] = self.port
 			url = "http://localhost:5000/newnode"
 			resp = requests.post(url, data)
-			print("Node being created...")
 			return resp
 
 	def register_node(self, bootstrap, ip, port, public_key):
@@ -57,6 +55,17 @@ class Node:
 
 			self.ring.append(node_vitals)
 
+			if(len(self.ring) == self.N):
+				for i in range(1, self.N):
+					url = self.ring[i]["address"] + "/broadcast/ring"
+					data = {}
+					data = {"ring": json.dumps(self.ring)}
+					resp = requests.post(url, data)
+
+				return resp
+
+			if(len(self.ring) > self.N ):
+				print("Maximum number of nodes reached")
 
 	def create_genesis_block(capacity, difficulty):
 		print("Genesis Block created")

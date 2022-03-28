@@ -28,10 +28,11 @@ app = Flask(__name__)
 
 
 def create_node():
-
 	req = new_node.create_new_node(arguments.node)
 	if (req.status_code == 200):
-		print("Node is being created")
+		print("Creating new node...")
+		time.sleep(0.5)
+		print("New node created and registerd in ring successfully!")
 
 # Command Line Tool to be implemented once the app is running
 def cli():
@@ -76,21 +77,23 @@ def index():
 
 
 
-@app.route("/newnode", methods = ['GET', 'POST'])
+@app.route("/newnode", methods = ['POST'])
 def newNode():
-	
+	print("New node created successfuly!")
 	public_key = request.form["public_key"]
 	ip = request.form["ip"]
 	port = request.form["port"]
+	print("About to register new node...")
 	new_node.register_node(arguments.node, ip, port, public_key)
+	print("New node registered successfully!")
+	return 'New node registered successfully!'
 
-	"""
-	url = 'http://' + url
-	node.ring.append((url, public_key))
-	#print(node.ring[0][0])
-	"""
-	
-	return 'Node created and registered'
+
+@app.route("/broadcast/ring", methods = ['POST'])
+def broadcast_ring():
+	new_node.ring = json.loads(request.form["ring"])
+
+	return "Node " + str(new_node.id)  +  " updated"
 
 
 #bootstrap node is informed that all nodes are on the network
@@ -158,7 +161,7 @@ if __name__ == "__main__":
 
 	a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-	location = ("127.0.0.1", arguments.port)
+	location = ("localhost", arguments.port)
 	result_of_check = a_socket.connect_ex(location)
 
 	if result_of_check == 0:
@@ -169,6 +172,8 @@ if __name__ == "__main__":
 	new_node = node.Node(arguments.node, arguments.N, "http://localhost", str(arguments.port))
 	#new_node.create_genesis_block(arguments.cap, arguments.diff)
 	if(arguments.node == 0):
-		create_node()
+		thread = threading.Thread(target=create_node)
+		thread.start()
+		#create_node()
 	
 	app.run(host='localhost', port=arguments.port, threaded = True)
