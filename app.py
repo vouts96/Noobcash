@@ -17,73 +17,80 @@ from Crypto.Hash import SHA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 import json
-import rsa
+#import rsa
+import threading
 import sys
+import os
 import time
+from argparse import ArgumentParser
 
 app = Flask(__name__)
 
 
-def run(PORT, clients):
+def create_node():
 
-	a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	req = new_node.create_new_node(arguments.node)
+	if (req.status_code == 200):
+		print("Node is being created")
 
-	location = ("127.0.0.1", PORT)
-	result_of_check = a_socket.connect_ex(location)
-	
+# Command Line Tool to be implemented once the app is running
+def cli():
+	while(True):
+		terminal = input()
+		if(terminal == "help"):
+			print("view								View last transactions: Print the transactions contained in the last validated block")
+			print("balance							Show balance: Print wallet balance")
+			print("t <recipient_address> <amount>	New transaction: Send to recipient_address wallet an amount of NBC coins from sender_wallet wallet")
+		elif(terminal == "view"):
+			print("view")
+		elif(terminal == "balance"):
+			print("balance")
+		else:
+			command = terminal.split()
+			# error-spell checking on 't <recipient_address> <amount>' command
+			if(command[0] == "t"):
+				check = False
+				for r in node.ring:
+					# if statement needs correction in r['url']
+					if(r['url'] == command[1]):
+						print("Correct IP")
+						check = True
+						amount = int(command[2])
+						if(amount > 0):
+							print("Correct amount")
+						else:
+							print("Incorrect amount")
+						break
+				if(check == False):
+					print("Please provide a correct address")
+				
+			else:
+				print("Error: unknown command" + command[0])
+				print("Run 'help' for usage")
 
-	if result_of_check == 0:
-		print("Port " + str(PORT) + " is in use.")
-		run(PORT+1, clients)
-	else:
-		print("Port " + str(PORT) + " is not in use.")
-		print("Opening Port " + str(PORT) + "......")
-		global node
-		node = node.Node()
-		node.ip_address = 'http://localhost:' + str(PORT)
-		node.current_id_count = PORT % 5000
-		node.wallet = wallet.generate_wallet(node.ip_address)
-		if PORT == 5000:
-			node.ring.append((node.ip_address, node.wallet.public_key))
-			node.NBC = 100 * clients
-			
-			#create genesis transaction for bootstrap node
-			genesis_transaction = transaction.Transaction()
-			transaction.create_transaction(genesis_transaction, 0, node.wallet.public_key, node.ip_address, 100 * clients, [0], [genesis_transaction.transaction_id, genesis_transaction.sender_address, genesis_transaction.amount])
-			
-			#print(transaction.stringify(genesis_transaction))
-			transaction.sign_transaction(genesis_transaction, node.wallet.private_key)
-			
-			# append the genesis transaction to the wallet transactions of bootstrap node
-			node.wallet.transactions.append(genesis_transaction)	
-
-			#create genesis block for bootstrap node
-			genesis_block = block.Block()
-			block.create_block(genesis_block, 0, [genesis_transaction], 1)
-		
-		elif PORT != 5000:
-			url = 'http://localhost:5000' + '/newnode/localhost:' + str(PORT) + '/' + node.wallet.public_key
-			resp = requests.post(url)
-			
-		app.run(host='localhost', port=PORT)
-			
-	
-		
 
 @app.route("/", methods = ['GET', 'POST'])
 def index():
-	return {'len': len(node.ring), 'NBCs': node.NBC, 'ID': node.current_id_count, 'wallet_address': node.wallet.address, 'ring': node.ring}
+	return {'len': len(new_node.ring),'ip': new_node.ip_address, 'port': new_node.port, 'NBC': new_node.NBC, 'ring': new_node.ring}
 
 
 
-@app.route("/newnode/<url>/<public_key>", methods = ['GET', 'POST'])
-def new_node(url, public_key):
+
+@app.route("/newnode", methods = ['GET', 'POST'])
+def newNode():
 	
+	public_key = request.form["public_key"]
+	ip = request.form["ip"]
+	port = request.form["port"]
+	new_node.register_node(arguments.node, ip, port, public_key)
+
+	"""
 	url = 'http://' + url
 	node.ring.append((url, public_key))
 	#print(node.ring[0][0])
+	"""
 	
-	return 'append ok'
+	return 'Node created and registered'
 
 
 #bootstrap node is informed that all nodes are on the network
@@ -104,6 +111,7 @@ def allnodes(clients):
 	for i in range(1, (int(clients))):
 		resp = requests.get(urls[i] + '/askforring')
 	
+	start_new_thread(cli, ())
 	return 'sent to all nodes'
 
 
@@ -139,20 +147,28 @@ def get_first_transactions():
 	return "hi"
 
 if __name__ == "__main__":
-	clients = 0
-	usage = 'usage error\npython app.py --clients <clients_number>'
-	if len(sys.argv) < 3:
-		print(usage)
-		exit(0)
 
-	for i, arg in enumerate(sys.argv):
-		if i == 1 and arg != '--clients':
-			print(usage)
-			exit(0)
-		if i == 2 and int(arg) > 10:
-			print('clients can not be more than 10')
-			exit(0)
-		elif i == 2 and int(arg) <= 10:
-			clients = int(arg)
+	parser = ArgumentParser()
+	parser.add_argument('node', type=int, help='if node is bootstrap enter 1 else enter 0')
+	parser.add_argument('cap', type=int, help='enter block capacity 1, 5 or 10')
+	parser.add_argument('diff', type=int, help='nonce difficulty digits (enter 4 or 5), hexadecimal')
+	parser.add_argument('N', type=int, help='total number of nodes')
+	parser.add_argument('port', type=int, help='port')
+	arguments = parser.parse_args()
 
-	run(5000, clients)
+	a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+	location = ("127.0.0.1", arguments.port)
+	result_of_check = a_socket.connect_ex(location)
+
+	if result_of_check == 0:
+		print("Port " + str(arguments.port) + " is in use.")
+		sys.exit("Bad port")
+
+	global new_node 
+	new_node = node.Node(arguments.node, arguments.N, "http://localhost", str(arguments.port))
+	#new_node.create_genesis_block(arguments.cap, arguments.diff)
+	if(arguments.node == 0):
+		create_node()
+	
+	app.run(host='localhost', port=arguments.port, threaded = True)

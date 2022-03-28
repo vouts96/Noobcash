@@ -21,34 +21,31 @@ class wallet:
 
 	def __init__(self):
 		
-		self.public_key = 0
-		self.private_key = 0
+		key = RSA.generate(1024)
+		self.private_key = hexlify(key.exportKey(format='DER')).decode('ascii')
+		pub_key = key.publickey()
+		self.public_key = hexlify(pub_key.exportKey(format='DER')).decode('ascii')
 		self.address = 0
 		self.transactions = []
 
 	def balance():
 		return 0
 
+	"""
+	def generate_wallet(self, ip_address):
+		
+		self.address = ip_address
+		
+		key = RSA.generate(1024)
+		self.private_key = hexlify(key.exportKey(format='DER')).decode('ascii')
+		pub_key = key.publickey()
+		self.public_key = hexlify(pub_key.exportKey(format='DER')).decode('ascii')
+		#print(w.public_key)
+		#print(w.private_key)
 
-
-def generate_wallet(ip_address):
-	
-	w = wallet()
-
-	w.address = ip_address
-	
-	key = RSA.generate(1024)
-	w.private_key = hexlify(key.exportKey(format='DER')).decode('ascii')
-	pub_key = key.publickey()
-	w.public_key = hexlify(pub_key.exportKey(format='DER')).decode('ascii')
-	#print(w.public_key)
-	#print(w.private_key)
-
-	#print(w.public_key)
-	#print(w.private_key)
-
-	return w
- 
+		#print(w.public_key)
+		#print(w.private_key)
+	"""
 	
 
 '''
