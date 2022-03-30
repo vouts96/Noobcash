@@ -54,7 +54,7 @@ class Transaction:
     def verify_signature(self, signature):
         public_key = RSA.importKey(unhexlify(self.sender_address))
         verifier = PKCS1_v1_5.new(public_key)
-        h = SHA.new((hashing(self)).encode('utf8'))
+        h = SHA.new((self.hashing()).encode('utf8'))
         if not verifier.verify(h, unhexlify(self.signature)):
             raise ValueError("Not valid Signature")
 

@@ -6,9 +6,8 @@ from hashlib import sha256
 from Crypto.Hash import SHA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
-import Crypto.Random.random
+import Crypto.Random.random as random
 import jsonpickle
-
 
 
 
@@ -35,4 +34,12 @@ class Block:
 		#print(sha256(stringed.encode('ascii')).hexdigest())
 		hashed = sha256(stringed.encode('ascii')).hexdigest()
 		return hashed
+	
+	def get_created_block(self, index, timestamp, transactions, previous_hash, nonce, hash):
+		self.index = index
+		self.timestamp = timestamp
+		self.transactions = transactions
+		self.previous_hash = previous_hash
+		self.nonce = nonce
+		self.hash = hash
 	

@@ -23,7 +23,7 @@ class Node:
 		self.port = port
 		self.wallet = wallet.wallet()
 		self.chain = []
-		self.current_block = []
+		self.current_block = block.Block(0,0, [], 0)
 		self.ring = []
 
 		# utxos is a list of the current sum of all utxos for every wallet

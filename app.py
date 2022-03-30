@@ -79,7 +79,7 @@ def index():
 			'port': new_node.port, 
 			'NBC': new_node.NBC, 
 			'ring': new_node.ring,
-			'current_block': new_node.current_block}, indent=4)
+			'current_block': new_node.current_block.serialize()}, indent=4)
 
 
 
@@ -126,7 +126,10 @@ def current_data():
 		#new_node.current_block = request.form["current_block"]
 		data = request.get_json(force=True)
 		print(data['current_block'])
-		new_node.current_block = data['current_block']
+		cb = data['current_block']	# current block shortcut 
+		new_node.current_block.get_created_block(cb['index'], cb['timestamp'], cb['transactions'], cb['previous_hash'], cb['nonce'], cb['hash'])
+		#new_node.current_block = data['current_block']
+		
 		return "block posted"
 	# block = jsonpickle.decode(request.form["current_block"])
 	#return block
