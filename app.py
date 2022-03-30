@@ -1,6 +1,7 @@
 from traceback import print_tb
 from binascii import unhexlify, hexlify
 from hashlib import sha256
+import flask
 from flask import Flask
 from flask import jsonify 
 from flask import request
@@ -22,6 +23,7 @@ import threading
 import sys
 import os
 import time
+import jsonpickle
 from argparse import ArgumentParser
 
 app = Flask(__name__)
@@ -32,7 +34,7 @@ def create_node():
 	if (req.status_code == 200):
 		print("Creating new node...")
 		time.sleep(0.5)
-		print("New node created and registerd in ring successfully!")
+		print("New node created and registered in ring successfully!")
 
 # Command Line Tool to be implemented once the app is running
 def cli():
@@ -72,7 +74,12 @@ def cli():
 
 @app.route("/", methods = ['GET', 'POST'])
 def index():
-	return {'len': len(new_node.ring),'ip': new_node.ip_address, 'port': new_node.port, 'NBC': new_node.NBC, 'ring': new_node.ring}
+	return json.dumps({'len': len(new_node.ring),
+			'ip': new_node.ip_address, 
+			'port': new_node.port, 
+			'NBC': new_node.NBC, 
+			'ring': new_node.ring,
+			'current_block': new_node.current_block}, indent=4)
 
 
 
@@ -92,57 +99,37 @@ def newNode():
 @app.route("/broadcast/ring", methods = ['POST'])
 def broadcast_ring():
 	new_node.ring = json.loads(request.form["ring"])
+	print("All nodes updated")
+	return "All nodes updated"
 
-	return "Node " + str(new_node.id)  +  " updated"
 
-
-#bootstrap node is informed that all nodes are on the network
-#and also creates transactions to send coins to all nodes
-@app.route("/allnodes/<clients>", methods = ['GET'])
-def allnodes(clients):
-	#create initial transactions for all nodes except from bootstrap(i = 1)
-	for i in range(1, len(node.ring)):
-		receiver_ip_address = node.ring[i][0]
-		#print(receiver_ip_address)
-		receiver_address = node.ring[i][1]
-		#print(receiver_address)
-		#t = transaction.Transaction()
-		#transaction.create_transaction(t, node.wallet.public_key, receiver_address, receiver_ip_address, 100, )
+@app.route("/broadcast/transaction", methods = ['GET', 'POST'])
+def broadcast_transaction():
+	print("Transaction broadcasted successfully!")
+	if(flask.request.method == 'GET'):
+		print("Everything is ok")
+		return "Everything is ok"
+	else:
+		new_node.utxos = (request.form["transaction"])
 	
-	#trigger requests for ring to send urls and public keys
-	urls = [j[0] for j in node.ring]
-	for i in range(1, (int(clients))):
-		resp = requests.get(urls[i] + '/askforring')
-	
-	start_new_thread(cli, ())
-	return 'sent to all nodes'
+	return "transaction"
 
 
-#request from bootstrap node to all nodes to ask for everyone's addresses
-@app.route("/askforring", methods = ['GET'])
-def ask_for_ring():
-	resp = requests.get("http://localhost:5000/getring")
-	data = resp.content
-	data = json.loads(data)
-	#print(data['urls'][0])
-	length = len(data['urls'])
-	for i in range(0, length):
-		node.ring.append((data['urls'][i], data['public_keys'][i]))
-	#print(node.ring)
-
-	return 'asked for ring'
-
-#finally bootstrap node returns to each node everyone's addresses
-@app.route("/getring", methods = ['GET'])
-def get_ring():
-	urls = []
-	public_keys = []
-	urls = [j[0] for j in node.ring]
-	public_keys = [j[1] for j in node.ring]
-	resp = {'urls': urls, 'public_keys': public_keys}
-	resp_json = json.dumps(resp)
-	return resp_json
-
+@app.route("/current_data", methods = ['GET', 'POST'])
+def current_data():
+	# function to receive blockchain from bootstrap
+	# & validate blockchain
+	if(flask.request.method == 'GET'):
+		print(json.dumps(new_node.utxos, indent=4))
+		return json.dumps(new_node.utxos, indent=4)
+	else:
+		#new_node.current_block = request.form["current_block"]
+		data = request.get_json(force=True)
+		print(data['current_block'])
+		new_node.current_block = data['current_block']
+		return "block posted"
+	# block = jsonpickle.decode(request.form["current_block"])
+	#return block
 
 @app.route("/getfirsttransactions", methods = ['GET'])
 def get_first_transactions():
@@ -170,7 +157,11 @@ if __name__ == "__main__":
 
 	global new_node 
 	new_node = node.Node(arguments.node, arguments.N, "http://localhost", str(arguments.port))
-	#new_node.create_genesis_block(arguments.cap, arguments.diff)
+	
+
+	if(arguments.node == 1):
+		new_node.create_genesis_block(arguments.cap, arguments.diff)
+
 	if(arguments.node == 0):
 		thread = threading.Thread(target=create_node)
 		thread.start()
