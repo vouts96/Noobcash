@@ -12,6 +12,7 @@ from json import JSONEncoder
 import sys
 import time
 
+
 class Node:
 	def __init__(self, bootstrap, N, ip, port):
 		
@@ -23,6 +24,7 @@ class Node:
 		self.port = port
 		self.wallet = wallet.wallet()
 		self.chain = []
+		self.transaction_list = []
 		self.current_block = block.Block(0,0, [], 0)
 		self.ring = []
 
@@ -73,13 +75,6 @@ class Node:
 			url = ip + ":" + port + "/current_data"
 			r = requests.post(url, data = json.dumps(data))
 			
-			"""
-			first_transaction = transaction.Transaction(0, self.wallet.private_key, self.wallet.public_key, 100*self.N, [])
-			self.utxos.append(first_transaction.serialize())
-			start_time = time.time()
-			"""
-
-			#broadcast first transaction to see if it works
 
 			if(len(self.ring) == self.N):
 				for i in range(1, self.N):
@@ -88,8 +83,6 @@ class Node:
 					data = {"ring": json.dumps(self.ring)}
 					resp = requests.post(url, data)
 					
-					#url1 = self.ring[i]["address"] + "/broadcast/transaction"
-					#self.broadcast_transaction(self.utxos, url1, start_time)
 				return resp
 
 			if(len(self.ring) > self.N ):
@@ -106,16 +99,40 @@ class Node:
 			self.add_transaction_to_block(first_transaction, difficulty)
 			print("Genesis Block created")
 	
-	def new_transaction(self):
-		print("New transaction created")
+	def create_transaction(self, recipient, amount):
+
+		transaction_list = []
+		balance = 0
+		for u in self.utxos:
+			if(balance < amount):
+				if(u["recipient"]==self.wallet.public_key):
+					balance += u["amount"] 
+					transaction_list.append(u)
+			else:
+				break
+		
+		if balance >= amount:
+			tx = transaction.Transaction(self.wallet.public_key, self.wallet.private_key, recipient, amount, transaction_list)
+			start_time = time.time()
+			for i in range(len(self.ring)):
+				url = self.ring[i]["address"] + "/broadcast/transaction"
+				self.broadcast_transaction(tx, url, start_time)
+
+		else:
+			return "Error creating transaction"
+		
+		return "New transaction created"
 	
 
 	def broadcast_transaction(self, transaction, url, start_time):
 		
 		data = {}
-		data['transaction'] = json.dumps(transaction)
-		#data["hello"] = len(self.ring)
+		data = {'transaction': json.dumps(transaction.serialize()), 'timestamp': start_time}
+		#data['transaction'] = transaction.serialize()
+		#data['timestamp'] = start_time
+
 		resp = requests.post(url, data)
+		
 		#if resp.status_code == 200:
 		#	transaction.transaction_outputs = resp.json()["outputs"]
 		

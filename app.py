@@ -24,6 +24,7 @@ import sys
 import os
 import time
 import jsonpickle
+
 from argparse import ArgumentParser
 
 app = Flask(__name__)
@@ -79,9 +80,8 @@ def index():
 			'port': new_node.port, 
 			'NBC': new_node.NBC, 
 			'ring': new_node.ring,
+			'transaction_list': new_node.transaction_list,
 			'current_block': new_node.current_block.serialize()}, indent=4)
-
-
 
 
 @app.route("/newnode", methods = ['POST'])
@@ -92,6 +92,7 @@ def newNode():
 	port = request.form["port"]
 	print("About to register new node...")
 	new_node.register_node(arguments.node, ip, port, public_key)
+	new_node.create_transaction(new_node.ring[0]["public_key"], 100)
 	print("New node registered successfully!")
 	return 'New node registered successfully!'
 
@@ -104,14 +105,31 @@ def broadcast_ring():
 
 
 @app.route("/broadcast/transaction", methods = ['GET', 'POST'])
-def broadcast_transaction():
+def get_transaction():
+	# This functions handles all incoming transactions.
+	# The handling consists of four stages
+	# First stage: Decode incoming transactions
+	# Second stage: Insert incoming transaction to node's transaction list
+	# Third stage: Validate transaction
+	# Fourth stage: If transaction is valid, add it to block
+
 	print("Transaction broadcasted successfully!")
-	if(flask.request.method == 'GET'):
-		print("Everything is ok")
-		return "Everything is ok"
-	else:
-		new_node.utxos = (request.form["transaction"])
+
+	# Decode incoming transaction
+	tx = json.loads(request.form["transaction"])
+	print(tx['timestamp'])
+	new_timestamp = float(tx['timestamp'])
 	
+	# Insert incoming transaction to node's transaction list, check "/" endpoint
+	if not new_node.transaction_list or new_timestamp > new_node.transaction_list[0].timestamp:
+		new_node.transaction_list.append(tx)
+	else:
+		i = 0
+		while(new_timestamp > new_node.transaction_list[i].timestamp):
+			i+=1
+		new_node.transaction_list.insert(i,tx)
+
+	# Validate transaction & If transaction is valid, add it to block
 	return "transaction"
 
 
