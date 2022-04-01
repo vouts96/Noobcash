@@ -3,6 +3,7 @@ from flask import jsonify
 import socket
 import wallet
 import block
+import blockchain
 import transaction
 import requests
 from requests.models import Response
@@ -27,6 +28,7 @@ class Node:
 		self.transaction_list = []
 		self.current_block = block.Block(0,0, [], 0)
 		self.ring = []
+		self.chain = blockchain.Βlockchain()
 
 		# utxos is a list of the current sum of all utxos for every wallet
 		self.utxos = []
@@ -96,7 +98,7 @@ class Node:
 			self.utxos.append(first_utxo)
 			self.current_block = block.Block(0, 1, [], difficulty)
 			#add transaction to current block
-			self.add_transaction_to_block(first_transaction, difficulty)
+			self.add_transaction_to_block(first_transaction, capacity, difficulty)
 			print("Genesis Block created")
 	
 	def create_transaction(self, recipient, amount):
@@ -143,11 +145,59 @@ class Node:
 		data['sender'] = self.id
 		resp = requests.post(url, data)
 
+	def verify_signature(self, signature, sender_address, transaction_id):
+		key = RSA.importKey(unhexlify(sender_address))
+		verifier = PKCS1_v1_5.new(key)
+		h = SHA.new(transaction_id)
+		if not verifier.verify(h, signature):
+			raise ValueError("Not valid Signature")
+		else:
+			return 1
 
-	def validate_transaction(self):
-		print("Transcation validated")
+	def validate_transaction(self, transaction):
+		
+		valid = True
+		for utxo_in in transaction.transaction_inputs:
+			if ((utxo_in["id"] not in [utxo["id"] for utxo in self.utxos]) or utxo_in["recipient"] != transaction.sender_address):
+				valid = False
+				break
+		
+		if (transaction.verify_signature(transaction.sender_address,transaction.signature,transaction.transaction_id) and found):	
+			index = []
+			temp = [(i,utxo["id"]) for i,utxo in enumerate(self.utxos)]
+
+			for utxo_in in transaction.transaction_inputs:
+				for i,x in temp:
+					if x==utxo_in["id"]:
+						index.append(i)
+
+			idx = [i for i in range(len(self.utxo)) if i not in idx]
+			change_utxo = {}
+			change_utxo["id"] = transaction.transaction_id+"0"
+			change_utxo["previous_trans_id"] = transaction.transaction_id
+			change_utxo["amount"] = self.balance(transaction.sender_address,transaction.transaction_inputs)-transaction.amount
+			change_utxo["recipient"] = transaction.sender_address.decode()
+
+			transaction.transaction_outputs.append(change_utxo)
+
+			recipient_utxo = {}
+			recipient_utxo["id"] = transaction.transaction_id+"1"
+			recipient_utxo["previous_trans_id"] = transaction.transaction_id 
+			recipient_utxo["amount"] = transaction.amount
+			recipient_utxo["recipient"] = transaction.receiver_address.decode()
+			self.utxos = [self.utxos[x] for x in idx]
+			if change_utxo["amount"] != 0:
+				self.utxos.append(change_utxo)
+			self.utxos.append(recipient_utxo)
+			transaction.transaction_outputs.append(recipient_utxo)
+
+			return 1
+		else:
+			return 0
+		
+		#print("Transcation validated")
 	
-	def add_transaction_to_block(self, transaction, difficulty):
+	def add_transaction_to_block(self, transaction, capacity, difficulty):
 
 		self.current_block.transactions.append(transaction.serialize())
 		self.current_block.hash = self.current_block.hashing(difficulty)			

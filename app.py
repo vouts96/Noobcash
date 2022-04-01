@@ -85,7 +85,7 @@ def index():
 
 
 @app.route("/newnode", methods = ['POST'])
-def newNode():
+def newnode():
 	print("New node created successfuly!")
 	public_key = request.form["public_key"]
 	ip = request.form["ip"]
@@ -116,7 +116,9 @@ def get_transaction():
 	print("Transaction broadcasted successfully!")
 
 	# Decode incoming transaction
-	tx = json.loads(request.form["transaction"])
+	#tx = json.loads(request.form["transaction"])
+	data = request.get_json(force=True)
+	trans = data['transactions']
 	print(tx['timestamp'])
 	new_timestamp = float(tx['timestamp'])
 	
@@ -130,8 +132,14 @@ def get_transaction():
 		new_node.transaction_list.insert(i,tx)
 
 	# Validate transaction & If transaction is valid, add it to block
-	return "transaction"
-
+	tx = new_node.transaction_list.pop(0)
+	print(type(tx))
+	result = []
+	if new_node.validate_transaction(tx):
+		res = tx.transaction_outputs
+		new_node.add_transaction_to_block(tx,capacity,difficulty)
+		
+	return jsonify({'result': result})
 
 @app.route("/current_data", methods = ['GET', 'POST'])
 def current_data():
@@ -179,9 +187,14 @@ if __name__ == "__main__":
 	global new_node 
 	new_node = node.Node(arguments.node, arguments.N, "http://localhost", str(arguments.port))
 	
+	global capacity
+	capacity = arguments.cap
+
+	global difficulty 
+	difficulty = arguments.diff * 4 
 
 	if(arguments.node == 1):
-		new_node.create_genesis_block(arguments.cap, arguments.diff)
+		new_node.create_genesis_block(capacity, difficulty)
 
 	if(arguments.node == 0):
 		thread = threading.Thread(target=create_node)

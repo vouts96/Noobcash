@@ -50,16 +50,11 @@ class Transaction:
         signature = hexlify(signer.sign(h)).decode('ascii')
         return signature
 
-
-    def verify_signature(self, signature):
-        public_key = RSA.importKey(unhexlify(self.sender_address))
-        verifier = PKCS1_v1_5.new(public_key)
-        h = SHA.new((self.hashing()).encode('utf8'))
-        if not verifier.verify(h, unhexlify(self.signature)):
-            raise ValueError("Not valid Signature")
-
-
-
-
-
-
+    def get_created_transaction(self, sender_address, receiver_address, amount, transaction_inputs, transaction_outputs, transaction_id):
+        self.sender_address = sender_address
+        self.receiver_address = receiver_address
+        self.amount = amount
+        self.transaction_inputs = transaction_inputs
+        self.transaction_outputs = transaction_outputs
+        self.signature = signature
+        self.transaction_id = transaction_id
