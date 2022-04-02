@@ -116,18 +116,24 @@ def get_transaction():
 	print("Transaction broadcasted successfully!")
 
 	# Decode incoming transaction
-	#tx = json.loads(request.form["transaction"])
-	data = request.get_json(force=True)
-	trans = data['transactions']
-	print(tx['timestamp'])
-	new_timestamp = float(tx['timestamp'])
+
+	trans = json.loads(request.form["transaction"])
+	print(trans)
+	tx = transaction.Transaction(0, new_node.wallet.private_key, 0, 0, [])
+	tx.get_created_transaction(trans["sender_address"], trans["receiver_address"], trans["amount"], trans["transaction_inputs"], trans["transaction_outputs"], trans["signature"], trans["transaction_id"], trans["timestamp"])
+	print(type(tx))
+	#new_node.transaction_list.append()
+	#data = request.get_json(force=True)
+	#trans = data['transactions']
+	#print(tx['timestamp'])
+	#new_timestamp = float(tx['timestamp'])
 	
 	# Insert incoming transaction to node's transaction list, check "/" endpoint
-	if not new_node.transaction_list or new_timestamp > new_node.transaction_list[0].timestamp:
+	if not new_node.transaction_list or tx.timestamp > new_node.transaction_list[0].timestamp:
 		new_node.transaction_list.append(tx)
 	else:
 		i = 0
-		while(new_timestamp > new_node.transaction_list[i].timestamp):
+		while(tx.timestamp > new_node.transaction_list[i].timestamp):
 			i+=1
 		new_node.transaction_list.insert(i,tx)
 
@@ -139,7 +145,8 @@ def get_transaction():
 		res = tx.transaction_outputs
 		new_node.add_transaction_to_block(tx,capacity,difficulty)
 		
-	return jsonify({'result': result})
+	#return jsonify({'result': result})
+	return 'hi'
 
 @app.route("/current_data", methods = ['GET', 'POST'])
 def current_data():

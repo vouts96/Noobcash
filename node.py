@@ -12,6 +12,11 @@ from json import JSONEncoder
 #import rsa
 import sys
 import time
+from binascii import unhexlify, hexlify
+from hashlib import sha256
+from Crypto.Hash import SHA
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.PublicKey import RSA
 
 
 class Node:
@@ -145,11 +150,11 @@ class Node:
 		data['sender'] = self.id
 		resp = requests.post(url, data)
 
-	def verify_signature(self, signature, sender_address, transaction_id):
-		key = RSA.importKey(unhexlify(sender_address))
+	def verify_signature(self, transaction):
+		key = RSA.importKey(unhexlify(transaction.sender_address))
 		verifier = PKCS1_v1_5.new(key)
-		h = SHA.new(transaction_id)
-		if not verifier.verify(h, signature):
+		h = SHA.new(transaction.hashing().encode('utf8'))
+		if not verifier.verify(h, transaction.signature):
 			raise ValueError("Not valid Signature")
 		else:
 			return 1
@@ -162,7 +167,7 @@ class Node:
 				valid = False
 				break
 		
-		if (transaction.verify_signature(transaction.sender_address,transaction.signature,transaction.transaction_id) and found):	
+		if (self.verify_signature(transaction) and valid):	
 			index = []
 			temp = [(i,utxo["id"]) for i,utxo in enumerate(self.utxos)]
 

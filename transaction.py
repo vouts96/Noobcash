@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from sqlite3 import Date
 import rsa
 import block
 import binascii
@@ -11,11 +12,12 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 import requests
 import jsonpickle
+import datetime
 
 
 class Transaction:
 
-    def __init__(self, sender_public_key, sender_private_key, receiver_public_key, amount, transaction_list):        
+    def __init__(self, sender_public_key, sender_private_key, receiver_public_key, amount, transaction_inputs):        
         #self.sender_address: To public key του wallet από το οποίο προέρχονται τα χρήματα
         self.sender_address = sender_public_key
         #self.receiver_address: To public key του wallet στο οποίο θα καταλήξουν τα χρήματα
@@ -23,7 +25,7 @@ class Transaction:
         #self.amount: το ποσό που θα μεταφερθεί
         self.amount = amount
         #self.transaction_inputs: λίστα από Transaction Input 
-        self.transaction_inputs = transaction_list
+        self.transaction_inputs = transaction_inputs
         #self.transaction_outputs: λίστα από Transaction Output 
         self.transaction_outputs = []
         #selfSignature
@@ -33,7 +35,8 @@ class Transaction:
         #self.transaction_id: το hash του transaction
         self.transaction_id = SHA.new(uuid.uuid1().bytes).hexdigest()
 
-        self.timestamp = 0
+        self.timestamp = datetime.datetime.now().strftime("%x %X")
+        
 
     def serialize(self):
         return self.__dict__
@@ -50,7 +53,9 @@ class Transaction:
         signature = hexlify(signer.sign(h)).decode('ascii')
         return signature
 
-    def get_created_transaction(self, sender_address, receiver_address, amount, transaction_inputs, transaction_outputs, transaction_id):
+
+
+    def get_created_transaction(self, sender_address, receiver_address, amount, transaction_inputs, transaction_outputs, signature, transaction_id, timestamp):
         self.sender_address = sender_address
         self.receiver_address = receiver_address
         self.amount = amount
@@ -58,3 +63,4 @@ class Transaction:
         self.transaction_outputs = transaction_outputs
         self.signature = signature
         self.transaction_id = transaction_id
+        self.timestamp = timestamp
