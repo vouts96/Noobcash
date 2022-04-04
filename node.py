@@ -154,7 +154,7 @@ class Node:
 		key = RSA.importKey(unhexlify(transaction.sender_address))
 		verifier = PKCS1_v1_5.new(key)
 		h = SHA.new(transaction.hashing().encode('utf8'))
-		if not verifier.verify(h, transaction.signature):
+		if not verifier.verify(h, unhexlify(transaction.signature)):
 			raise ValueError("Not valid Signature")
 		else:
 			return 1

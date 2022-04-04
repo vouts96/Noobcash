@@ -118,15 +118,10 @@ def get_transaction():
 	# Decode incoming transaction
 
 	trans = json.loads(request.form["transaction"])
-	print(trans)
+	#print(trans)
 	tx = transaction.Transaction(0, new_node.wallet.private_key, 0, 0, [])
 	tx.get_created_transaction(trans["sender_address"], trans["receiver_address"], trans["amount"], trans["transaction_inputs"], trans["transaction_outputs"], trans["signature"], trans["transaction_id"], trans["timestamp"])
-	print(type(tx))
-	#new_node.transaction_list.append()
-	#data = request.get_json(force=True)
-	#trans = data['transactions']
-	#print(tx['timestamp'])
-	#new_timestamp = float(tx['timestamp'])
+	
 	
 	# Insert incoming transaction to node's transaction list, check "/" endpoint
 	if not new_node.transaction_list or tx.timestamp > new_node.transaction_list[0].timestamp:
@@ -139,14 +134,13 @@ def get_transaction():
 
 	# Validate transaction & If transaction is valid, add it to block
 	tx = new_node.transaction_list.pop(0)
-	print(type(tx))
 	result = []
 	if new_node.validate_transaction(tx):
-		res = tx.transaction_outputs
+		result = tx.transaction_outputs
 		new_node.add_transaction_to_block(tx,capacity,difficulty)
 		
-	#return jsonify({'result': result})
-	return 'hi'
+	return jsonify({'result': result})
+	
 
 @app.route("/current_data", methods = ['GET', 'POST'])
 def current_data():
