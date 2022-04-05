@@ -5,6 +5,7 @@ import wallet
 import block
 import blockchain
 import transaction
+import app
 import requests
 from requests.models import Response
 import json
@@ -20,7 +21,7 @@ from Crypto.PublicKey import RSA
 
 
 class Node:
-	def __init__(self, bootstrap, N, ip, port):
+	def __init__(self, bootstrap, N, ip, port, capacity, difficulty):
 		
 		##set
 		self.N = N
@@ -33,7 +34,10 @@ class Node:
 		self.transaction_list = []
 		self.current_block = block.Block(0,0, [], 0)
 		self.ring = []
-		self.chain = blockchain.Βlockchain()
+		self.chain = blockchain.Blockchain()
+		self.capacity = capacity
+		self.difficulty = difficulty
+		
 
 		# utxos is a list of the current sum of all utxos for every wallet
 		self.utxos = []
@@ -78,8 +82,10 @@ class Node:
 			data['id'] = new_node_id
 			data['utxos'] = self.utxos
 			data['current_block'] = self.current_block.serialize()
+			data['current_chain'] = self.chain.serialize()
+			print(data['current_chain'])
 			print(json.dumps(data, indent=4))
-			url = ip + ":" + port + "/current_data"
+			url = ip + ":" + port + "/current_chain"
 			r = requests.post(url, data = json.dumps(data))
 			
 
@@ -102,9 +108,11 @@ class Node:
 			first_utxo = {'id': first_transaction.transaction_id, 'previous_transaction_id': -1, 'amount': first_transaction.amount, 'recipient': self.wallet.public_key}
 			self.utxos.append(first_utxo)
 			self.current_block = block.Block(0, 1, [], difficulty)
-			#add transaction to current block
+			# add transaction to current block
 			self.add_transaction_to_block(first_transaction, capacity, difficulty)
-			print("Genesis Block created")
+			# add genesis block to blockchain
+			self.chain.add_block_to_chain(self.current_block)
+			print("Genesis Block created and appended to blockchain")
 	
 	def create_transaction(self, recipient, amount):
 
@@ -117,13 +125,14 @@ class Node:
 					transaction_list.append(u)
 			else:
 				break
-		
+		print('my balance: ' + str(balance))
 		if balance >= amount:
 			tx = transaction.Transaction(self.wallet.public_key, self.wallet.private_key, recipient, amount, transaction_list)
 			start_time = time.time()
 			for i in range(len(self.ring)):
 				url = self.ring[i]["address"] + "/broadcast/transaction"
 				self.broadcast_transaction(tx, url, start_time)
+				#self.add_transaction_to_block(tx, self.capacity, self.difficulty)
 
 		else:
 			return "Error creating transaction"
@@ -176,11 +185,15 @@ class Node:
 					if x==utxo_in["id"]:
 						index.append(i)
 
-			idx = [i for i in range(len(self.utxo)) if i not in idx]
-			change_utxo = {}
+			# something's wrong here 
+			idx = [i for i in range(len(self.utxos)) if i not in index]
+			# ----------------------s
+			'''change_utxo = {}
 			change_utxo["id"] = transaction.transaction_id+"0"
 			change_utxo["previous_trans_id"] = transaction.transaction_id
+			# balance function does not exist in node we have to create it
 			change_utxo["amount"] = self.balance(transaction.sender_address,transaction.transaction_inputs)-transaction.amount
+			# ------------------------------------------------------------
 			change_utxo["recipient"] = transaction.sender_address.decode()
 
 			transaction.transaction_outputs.append(change_utxo)
@@ -194,18 +207,23 @@ class Node:
 			if change_utxo["amount"] != 0:
 				self.utxos.append(change_utxo)
 			self.utxos.append(recipient_utxo)
-			transaction.transaction_outputs.append(recipient_utxo)
+			transaction.transaction_outputs.append(recipient_utxo)'''
 
 			return 1
 		else:
-			return 0
+			return 1
 		
 		#print("Transcation validated")
 	
 	def add_transaction_to_block(self, transaction, capacity, difficulty):
-
+		
 		self.current_block.transactions.append(transaction.serialize())
-		self.current_block.hash = self.current_block.hashing(difficulty)			
+		if(transaction.sender_address != "0"):
+			#print('transaction_list_length: ' + str(len(self.current_block.transactions)))
+			if len(self.current_block.transactions) == capacity:
+				print('Current block reached its limit. Time to mine!')
+
+		self.current_block.hash = self.current_block.hashing()			
 
 		# we should write some code for handling a full block
 		# when trying to add a new transaction to current block

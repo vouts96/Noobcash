@@ -12,7 +12,7 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 import requests
 import jsonpickle
-import datetime
+from datetime import datetime
 
 
 class Transaction:
@@ -35,7 +35,8 @@ class Transaction:
         #self.transaction_id: το hash του transaction
         self.transaction_id = SHA.new(uuid.uuid1().bytes).hexdigest()
 
-        self.timestamp = datetime.datetime.now().strftime("%x %X")
+        #self.timestamp = datetime.datetime.now().strftime("%x %X")
+        self.timestamp = datetime.timestamp(datetime.now())
         
 
     def serialize(self):

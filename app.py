@@ -1,3 +1,6 @@
+from crypt import methods
+from ensurepip import bootstrap
+from textwrap import indent
 from traceback import print_tb
 from binascii import unhexlify, hexlify
 from hashlib import sha256
@@ -81,6 +84,7 @@ def index():
 			'NBC': new_node.NBC, 
 			'ring': new_node.ring,
 			'transaction_list': new_node.transaction_list,
+			'UTXOS': new_node.utxos,
 			'current_block': new_node.current_block.serialize()}, indent=4)
 
 
@@ -115,6 +119,12 @@ def get_transaction():
 
 	print("Transaction broadcasted successfully!")
 
+	# if bootstrap clear current block from genesis
+	if bootstrap:
+		# clear current block 
+		new_node.current_block = block.Block(0,0, [], 0) 
+
+
 	# Decode incoming transaction
 
 	trans = json.loads(request.form["transaction"])
@@ -138,11 +148,12 @@ def get_transaction():
 	if new_node.validate_transaction(tx):
 		result = tx.transaction_outputs
 		new_node.add_transaction_to_block(tx,capacity,difficulty)
+		print('Transaction added to current block')
 		
 	return jsonify({'result': result})
 	
 
-@app.route("/current_data", methods = ['GET', 'POST'])
+@app.route("/current_chain", methods = ['GET', 'POST'])
 def current_data():
 	# function to receive blockchain from bootstrap
 	# & validate blockchain
@@ -152,19 +163,25 @@ def current_data():
 	else:
 		#new_node.current_block = request.form["current_block"]
 		data = request.get_json(force=True)
-		print(data['current_block'])
+		#print(data['current_block'])
 		cb = data['current_block']	# current block shortcut 
-		new_node.current_block.get_created_block(cb['index'], cb['timestamp'], cb['transactions'], cb['previous_hash'], cb['nonce'], cb['hash'])
+		#new_node.current_block.get_created_block(cb['index'], cb['timestamp'], cb['transactions'], cb['previous_hash'], cb['nonce'], cb['hash'])
 		#new_node.current_block = data['current_block']
-		
+		#new_node.chain.add_block_to_chain(new_node.current_block)
+		print(len(new_node.chain.chain))
+		print('current_chain')
+		print(data['current_chain'])
+		new_node.chain.get_created_chain(data['current_chain'])
+		print(len(new_node.chain.chain))
+		print("Genesis Block appended to blockchain")
+		new_node.current_block.transactions = block.Block(0,0, [], 0)
+		print("Current block cleared.")
+
 		return "block posted"
 	# block = jsonpickle.decode(request.form["current_block"])
 	#return block
 
-@app.route("/getfirsttransactions", methods = ['GET'])
-def get_first_transactions():
-	#for i in range(0, len(node.ring)):
-	return "hi"
+
 
 if __name__ == "__main__":
 
@@ -174,6 +191,7 @@ if __name__ == "__main__":
 	parser.add_argument('diff', type=int, help='nonce difficulty digits (enter 4 or 5), hexadecimal')
 	parser.add_argument('N', type=int, help='total number of nodes')
 	parser.add_argument('port', type=int, help='port')
+	global arguments
 	arguments = parser.parse_args()
 
 	a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -186,7 +204,7 @@ if __name__ == "__main__":
 		sys.exit("Bad port")
 
 	global new_node 
-	new_node = node.Node(arguments.node, arguments.N, "http://localhost", str(arguments.port))
+	new_node = node.Node(arguments.node, arguments.N, "http://localhost", str(arguments.port), arguments.cap, arguments.diff)
 	
 	global capacity
 	capacity = arguments.cap
