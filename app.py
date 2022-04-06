@@ -176,7 +176,7 @@ def current_data():
 		new_node.chain.get_created_chain(data['current_chain'])
 		print(len(new_node.chain.chain))
 		print("Genesis Block appended to blockchain")
-		new_node.current_block.transactions = block.Block(0,0, [], 0)
+		new_node.current_block = block.Block(0,0, [], 0)
 		print("Current block cleared.")
 
 		return "block posted"
