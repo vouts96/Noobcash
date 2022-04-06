@@ -120,7 +120,9 @@ def get_transaction():
 	print("Transaction broadcasted successfully!")
 
 	# if bootstrap clear current block from genesis
-	if bootstrap:
+	if arguments.node == 1:
+		print("SENDER ADDRESS")
+		print(new_node.current_block.transactions[0]['sender_address'])
 		# clear current block 
 		new_node.current_block = block.Block(0,0, [], 0) 
 
@@ -147,7 +149,7 @@ def get_transaction():
 	result = []
 	if new_node.validate_transaction(tx):
 		result = tx.transaction_outputs
-		new_node.add_transaction_to_block(tx,capacity,difficulty)
+		new_node.add_transaction_to_block(tx, capacity, difficulty)
 		print('Transaction added to current block')
 		
 	return jsonify({'result': result})
@@ -210,7 +212,7 @@ if __name__ == "__main__":
 	capacity = arguments.cap
 
 	global difficulty 
-	difficulty = arguments.diff * 4 
+	difficulty = arguments.diff
 
 	if(arguments.node == 1):
 		new_node.create_genesis_block(capacity, difficulty)

@@ -18,6 +18,8 @@ from hashlib import sha256
 from Crypto.Hash import SHA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
+from datetime import datetime
+import threading
 
 
 class Node:
@@ -32,7 +34,7 @@ class Node:
 		self.wallet = wallet.wallet()
 		self.chain = []
 		self.transaction_list = []
-		self.current_block = block.Block(0,0, [], 0)
+		self.current_block = block.Block(0,0, [], 0)	# create a dummy block
 		self.ring = []
 		self.chain = blockchain.Blockchain()
 		self.capacity = capacity
@@ -222,17 +224,56 @@ class Node:
 			#print('transaction_list_length: ' + str(len(self.current_block.transactions)))
 			if len(self.current_block.transactions) == capacity:
 				print('Current block reached its limit. Time to mine!')
-
-		self.current_block.hash = self.current_block.hashing()			
+				print(self.current_block.serialize())
+				#thread = threading.Thread(target=self.mine_block(int(difficulty)))
+				#thread.start()
+				self.mine_block(int(difficulty))			
 
 		# we should write some code for handling a full block
 		# when trying to add a new transaction to current block
 		# e.g. start to mine the block etc.
 
 
+	def mine_block(self, difficulty):
+		length = len(self.chain.chain)
+
+		# set index for current block based on the last block index of blockchain 
+		index = self.chain.chain[length-1].index
+		self.current_block.index = index
+
+		# get previous hash for current block from last block of blockchain
+		previous_hash = self.chain.chain[length-1].hash
+		self.current_block.previous_hash = previous_hash
+
+		# generate a new timestamp for current block 
+		self.current_block.timestamp = datetime.timestamp(datetime.now())
+		
+		# generate a hash for current block
+		#self.current_block.hash = self.current_block.hashing
+
+		self.current_block.difficulty = difficulty
 
 
+		print(self.current_block.nonce)
+		while self.count_zeros(self.current_block.hash) < self.current_block.difficulty:
+			self.current_block.nonce = self.current_block.nonce + 1 
+			self.current_block.hash = self.current_block.hashing()
+			print(self.current_block.hash)
 
+		print('NONCE FOUND: ')
+		print(self.current_block.nonce)
+
+
+	def count_zeros(self, hash):
+		counter = 0
+		i = 0
+		while 1:
+			if hash[i] == '0':
+				counter = counter + 1
+				i = i + 1
+			else:
+				break
+		return counter
 
 
 

@@ -25,12 +25,13 @@ class Block:
 		
 		# hash to be created by function considering also the difficulty bits
 		self.hash = self.hashing()
+		self.difficulty = difficulty
 		
 	def serialize(self):
 		return self.__dict__
 
 	def hashing(self):
-		stringed = str(self.index) + str(self.timestamp) + str(self.transactions) + str(self.previous_hash)
+		stringed = str(self.index) + str(self.timestamp) + str(self.transactions) + str(self.previous_hash) + str(self.nonce)
 		#print(sha256(stringed.encode('ascii')).hexdigest())
 		hashed = sha256(stringed.encode('ascii')).hexdigest()
 		return hashed
