@@ -40,41 +40,6 @@ def create_node():
 		time.sleep(0.5)
 		print("New node created and registered in ring successfully!")
 
-# Command Line Tool to be implemented once the app is running
-def cli():
-	while(True):
-		terminal = input()
-		if(terminal == "help"):
-			print("view								View last transactions: Print the transactions contained in the last validated block")
-			print("balance							Show balance: Print wallet balance")
-			print("t <recipient_address> <amount>	New transaction: Send to recipient_address wallet an amount of NBC coins from sender_wallet wallet")
-		elif(terminal == "view"):
-			print("view")
-		elif(terminal == "balance"):
-			print("balance")
-		else:
-			command = terminal.split()
-			# error-spell checking on 't <recipient_address> <amount>' command
-			if(command[0] == "t"):
-				check = False
-				for r in node.ring:
-					# if statement needs correction in r['url']
-					if(r['url'] == command[1]):
-						print("Correct IP")
-						check = True
-						amount = int(command[2])
-						if(amount > 0):
-							print("Correct amount")
-						else:
-							print("Incorrect amount")
-						break
-				if(check == False):
-					print("Please provide a correct address")
-				
-			else:
-				print("Error: unknown command" + command[0])
-				print("Run 'help' for usage")
-
 
 @app.route("/", methods = ['GET', 'POST'])
 def index():
