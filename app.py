@@ -11,10 +11,8 @@ from flask import jsonify
 from flask import request
 import node
 import socket
-import wallet
 import block
 import transaction
-import requests
 from requests.models import Response
 from binascii import unhexlify, hexlify
 from hashlib import sha256
@@ -22,7 +20,6 @@ from Crypto.Hash import SHA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 import json
-#import rsa
 import threading
 import sys
 import time

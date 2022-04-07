@@ -1,17 +1,13 @@
 from flask import Flask
 from flask import jsonify 
-import socket
 import wallet
 import block
 import blockchain
 import transaction
-import app
 import requests
 from requests.models import Response
 import json
 from json import JSONEncoder
-#import rsa
-import sys
 import time
 from binascii import unhexlify, hexlify
 from hashlib import sha256

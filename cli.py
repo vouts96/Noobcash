@@ -1,7 +1,6 @@
 from argparse import ArgumentParser
 from ast import arg
 from textwrap import indent
-import node
 import sys
 import requests
 import json
