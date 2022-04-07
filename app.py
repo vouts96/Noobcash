@@ -78,7 +78,8 @@ def cli():
 
 @app.route("/", methods = ['GET', 'POST'])
 def index():
-	return json.dumps({'len': len(new_node.ring),
+	return json.dumps(
+			{'len': len(new_node.ring),
 			'ip': new_node.ip_address, 
 			'port': new_node.port, 
 			'NBC': new_node.NBC, 
@@ -124,7 +125,7 @@ def get_transaction():
 		print("SENDER ADDRESS")
 		print(new_node.current_block.transactions[0]['sender_address'])
 		# clear current block 
-		new_node.current_block = block.Block(0,0, [], 0) 
+		new_node.current_block = block.Block(0,0, [], difficulty) 
 
 
 	# Decode incoming transaction
@@ -133,7 +134,7 @@ def get_transaction():
 	#print(trans)
 	tx = transaction.Transaction(0, new_node.wallet.private_key, 0, 0, [])
 	tx.get_created_transaction(trans["sender_address"], trans["receiver_address"], trans["amount"], trans["transaction_inputs"], trans["transaction_outputs"], trans["signature"], trans["transaction_id"], trans["timestamp"])
-	
+	print(trans["sender_address"])
 	
 	# Insert incoming transaction to node's transaction list, check "/" endpoint
 	if not new_node.transaction_list or tx.timestamp > new_node.transaction_list[0].timestamp:
@@ -176,7 +177,7 @@ def current_data():
 		new_node.chain.get_created_chain(data['current_chain'])
 		print(len(new_node.chain.chain))
 		print("Genesis Block appended to blockchain")
-		new_node.current_block = block.Block(0,0, [], 0)
+		new_node.current_block = block.Block(0,0, [], difficulty)
 		print("Current block cleared.")
 
 		return "block posted"

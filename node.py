@@ -34,7 +34,7 @@ class Node:
 		self.wallet = wallet.wallet()
 		self.chain = []
 		self.transaction_list = []
-		self.current_block = block.Block(0,0, [], 0)	# create a dummy block
+		self.current_block = block.Block(0,0, [], difficulty)	# create a dummy block
 		self.ring = []
 		self.chain = blockchain.Blockchain()
 		self.capacity = capacity
@@ -178,10 +178,15 @@ class Node:
 		
 		valid = True
 		for utxo_in in transaction.transaction_inputs:
-			if ((utxo_in["id"] not in [utxo["id"] for utxo in self.utxos]) or utxo_in["recipient"] != transaction.sender_address):
+			# the (utxo_in["id"] not in [utxo["id"] for utxo in self.utxos]) fails for first transaction from bootstrap to nodes
+			# because there are no utxos in the node, self.utxos is empty
+			if (utxo_in["recipient"] != transaction.sender_address):
 				valid = False
 				break
+			
 		
+		#print(valid)
+		print(self.verify_signature(transaction))
 		if (self.verify_signature(transaction) and valid):	
 			index = []
 			temp = [(i,utxo["id"]) for i,utxo in enumerate(self.utxos)]
@@ -194,33 +199,41 @@ class Node:
 			# something's wrong here 
 			idx = [i for i in range(len(self.utxos)) if i not in index]
 			# ----------------------s
-			'''change_utxo = {}
+			change_utxo = {}
+			
 			change_utxo["id"] = transaction.transaction_id+"0"
 			change_utxo["previous_trans_id"] = transaction.transaction_id
-			# balance function does not exist in node we have to create it
 			change_utxo["amount"] = self.balance(transaction.sender_address,transaction.transaction_inputs)-transaction.amount
-			# ------------------------------------------------------------
-			change_utxo["recipient"] = transaction.sender_address.decode()
-
+			change_utxo["recipient"] = transaction.sender_address
+			
+			
 			transaction.transaction_outputs.append(change_utxo)
-
+			
 			recipient_utxo = {}
 			recipient_utxo["id"] = transaction.transaction_id+"1"
 			recipient_utxo["previous_trans_id"] = transaction.transaction_id 
 			recipient_utxo["amount"] = transaction.amount
-			recipient_utxo["recipient"] = transaction.receiver_address.decode()
+			recipient_utxo["recipient"] = transaction.receiver_address
+			
 			self.utxos = [self.utxos[x] for x in idx]
 			if change_utxo["amount"] != 0:
 				self.utxos.append(change_utxo)
 			self.utxos.append(recipient_utxo)
-			transaction.transaction_outputs.append(recipient_utxo)'''
+			transaction.transaction_outputs.append(recipient_utxo)
 
 			return 1
 		else:
-			return 1
+			return 0
 		
 		#print("Transcation validated")
 	
+	def balance(self,recipient,utxos):
+		total = 0
+		for utxo in utxos:
+			if (utxo["recipient"]==recipient):
+				total += utxo["amount"]
+		return total
+
 	def add_transaction_to_block(self, transaction, capacity, difficulty):
 		
 		self.current_block.transactions.append(transaction.serialize())
@@ -262,7 +275,7 @@ class Node:
 		while self.count_zeros(self.current_block.hash) < self.current_block.difficulty:
 			self.current_block.nonce = self.current_block.nonce + 1 
 			self.current_block.hash = self.current_block.hashing()
-			print(self.current_block.hash)
+			#print(self.current_block.hash)
 
 		print('NONCE FOUND: ')
 		print(self.current_block.nonce)
