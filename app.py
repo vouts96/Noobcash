@@ -52,8 +52,9 @@ def index():
 			'ring': new_node.ring,
 			'transaction_list': new_node.transaction_list,
 			'UTXOS': new_node.utxos,
-			'current_block': new_node.current_block.serialize(),
-			'CHAIN': new_node.chain.serialize()}, indent=4)
+			'current_block': new_node.current_block.serialize()
+			#'CHAIN': new_node.chain.serialize()
+			}, indent=4)
 
 
 @app.route("/newnode", methods = ['POST'])
@@ -155,10 +156,10 @@ def current_data():
 
 @app.route("/get_balance", methods=['GET'])
 def get_balance():
-	# to be fixed
-	#return new_node.balance()
-	return {"balance": 1234}
+	balance = new_node.balance(new_node.wallet.public_key, new_node.utxos)
+	return {"balance": balance}
 
+	
 @app.route("/get_view", methods=['GET'])
 def get_view():
 	length = len(new_node.chain.chain)
