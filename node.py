@@ -28,7 +28,6 @@ class Node:
 		##set
 		self.N = N
 		self.id = 0
-		self.NBC = 0
 		self.ip_address = ip
 		self.port = port
 		self.wallet = wallet.wallet()
@@ -50,6 +49,7 @@ class Node:
 			bootstrap_vitals["id"] = self.id
 			bootstrap_vitals["address"] = ip + ":" + port
 			bootstrap_vitals["public_key"] = self.wallet.public_key
+			bootstrap_vitals["utxos"] = []
 
 			self.ring.append(bootstrap_vitals)
 	
@@ -127,7 +127,7 @@ class Node:
 					transaction_list.append(u)
 			else:
 				break
-		print('my balance: ' + str(balance))
+		#print('my balance: ' + str(balance))
 		threads = []
 		if balance >= amount:
 			tx = transaction.Transaction(self.wallet.public_key, self.wallet.private_key, recipient, amount, transaction_list)
