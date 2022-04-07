@@ -128,12 +128,16 @@ class Node:
 			else:
 				break
 		print('my balance: ' + str(balance))
+		threads = []
 		if balance >= amount:
 			tx = transaction.Transaction(self.wallet.public_key, self.wallet.private_key, recipient, amount, transaction_list)
 			start_time = time.time()
 			for i in range(len(self.ring)):
 				url = self.ring[i]["address"] + "/broadcast/transaction"
-				self.broadcast_transaction(tx, url, start_time)
+				thread = threading.Thread(target=self.broadcast_transaction,args = (tx, url, start_time))
+				thread.start()
+				threads.append(thread)
+				#self.broadcast_transaction(tx, url, start_time)
 				#self.add_transaction_to_block(tx, self.capacity, self.difficulty)
 
 		else:
