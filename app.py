@@ -1,5 +1,6 @@
 from crypt import methods
 from ensurepip import bootstrap
+from itertools import chain
 from textwrap import indent
 from traceback import print_tb
 from binascii import unhexlify, hexlify
@@ -51,7 +52,8 @@ def index():
 			'ring': new_node.ring,
 			'transaction_list': new_node.transaction_list,
 			'UTXOS': new_node.utxos,
-			'current_block': new_node.current_block.serialize()}, indent=4)
+			'current_block': new_node.current_block.serialize(),
+			'CHAIN': new_node.chain.serialize()}, indent=4)
 
 
 @app.route("/newnode", methods = ['POST'])
@@ -86,9 +88,9 @@ def get_transaction():
 	print("Transaction broadcasted successfully!")
 
 	# if bootstrap clear current block from genesis
-	if arguments.node == 1:
-		print("SENDER ADDRESS")
-		print(new_node.current_block.transactions[0]['sender_address'])
+	if arguments.node == 1 and new_node.current_block.previous_hash == 1:
+		#print("SENDER ADDRESS")
+		#print(new_node.current_block.transactions[0]['sender_address'])
 		# clear current block 
 		new_node.current_block = block.Block(0,0, [], difficulty) 
 
@@ -137,9 +139,9 @@ def current_data():
 		#new_node.current_block.get_created_block(cb['index'], cb['timestamp'], cb['transactions'], cb['previous_hash'], cb['nonce'], cb['hash'])
 		#new_node.current_block = data['current_block']
 		#new_node.chain.add_block_to_chain(new_node.current_block)
-		print(len(new_node.chain.chain))
-		print('current_chain')
-		print(data['current_chain'])
+		#print(len(new_node.chain.chain))
+		#print('current_chain')
+		#print(data['current_chain'])
 		new_node.chain.get_created_chain(data['current_chain'])
 		print(len(new_node.chain.chain))
 		print("Genesis Block appended to blockchain")
@@ -150,6 +152,29 @@ def current_data():
 	# block = jsonpickle.decode(request.form["current_block"])
 	#return block
 
+
+@app.route("/get_balance", methods=['GET'])
+def get_balance():
+	# to be fixed
+	#return new_node.balance()
+	return {"balance": 1234}
+
+@app.route("/get_view", methods=['GET'])
+def get_view():
+	length = len(new_node.chain.chain)
+	last_block = new_node.chain.chain[length-1]
+	return json.dumps(last_block.transactions)
+
+@app.route("/create_transaction_cli", methods=['POST'])
+def create_transaction_cli():
+	recipient = request.form["recipient"]
+	amount = request.form["amount"]
+	if recipient != new_node.ip_address:
+		for url in new_node.ring:
+			if url["address"] == recipient:
+				return new_node.create_transaction(recipient, int(amount))
+		
+	
 
 
 if __name__ == "__main__":

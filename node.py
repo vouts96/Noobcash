@@ -241,10 +241,13 @@ class Node:
 			#print('transaction_list_length: ' + str(len(self.current_block.transactions)))
 			if len(self.current_block.transactions) == capacity:
 				print('Current block reached its limit. Time to mine!')
-				print(self.current_block.serialize())
+				#print(self.current_block.serialize())
 				#thread = threading.Thread(target=self.mine_block(int(difficulty)))
 				#thread.start()
-				self.mine_block(int(difficulty))			
+				if self.mine_block(int(difficulty)):
+					self.chain.add_block_to_chain(self.current_block)
+					print("Block appended to blockchain")
+
 
 		# we should write some code for handling a full block
 		# when trying to add a new transaction to current block
@@ -255,7 +258,7 @@ class Node:
 		length = len(self.chain.chain)
 
 		# set index for current block based on the last block index of blockchain 
-		index = self.chain.chain[length-1].index
+		index = self.chain.chain[length-1].index + 1
 		self.current_block.index = index
 
 		# get previous hash for current block from last block of blockchain
@@ -279,6 +282,9 @@ class Node:
 
 		print('NONCE FOUND: ')
 		print(self.current_block.nonce)
+		#print(self.current_block.serialize())
+
+		return True
 
 
 	def count_zeros(self, hash):

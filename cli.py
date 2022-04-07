@@ -1,7 +1,10 @@
 from argparse import ArgumentParser
 from ast import arg
+from textwrap import indent
 import node
 import sys
+import requests
+import json
 
 
 '''def cli():
@@ -30,9 +33,15 @@ def cli():
 	if(arguments[1] == "help"):
 		print_help()
 	elif(arguments[1] == "view"):
-		print("view")
+		view_resp = requests.get('http://localhost:5000/get_view')
+		view = json.dumps(json.loads(view_resp.content.decode('ascii')), indent=4)
+		print("Transactions of the last validated block:")
+		print(view)
+
 	elif(arguments[1] == "balance"):
-		print("balance")
+		balance_resp = requests.get('http://localhost:5000/get_balance')
+		balance = json.loads(balance_resp.content.decode('ascii'))['balance']
+		print("My balance is: " + str(balance))
 	elif(arguments[1] == "t"):
 		# Error checks ---------------------------------------------
 		if(len(arguments) != 4):
@@ -43,6 +52,13 @@ def cli():
 			print_help()
 			exit(0)
 		# ----------------------------------------------------------
+		data = {}
+		data["recipient"] = arguments[2]
+		data["amount"] = arguments[3]
+
+		trans_resp = requests.post("http://localhost:5000/create_transaction_cli", data)
+		print(trans_resp.content)
+		
 
 		'''for r in node.ring:
 			if(r['url'] == arguments[2]):
