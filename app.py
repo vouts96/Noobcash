@@ -25,9 +25,7 @@ import json
 #import rsa
 import threading
 import sys
-import os
 import time
-import jsonpickle
 
 from argparse import ArgumentParser
 
@@ -159,7 +157,7 @@ def get_balance():
 	balance = new_node.balance(new_node.wallet.public_key, new_node.utxos)
 	return {"balance": balance}
 
-	
+
 @app.route("/get_view", methods=['GET'])
 def get_view():
 	length = len(new_node.chain.chain)
