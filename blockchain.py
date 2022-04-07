@@ -1,6 +1,5 @@
 import block
-
-
+import threading
 
 class Blockchain:
     def __init__(self):
@@ -8,6 +7,8 @@ class Blockchain:
         # list of blocks added to be added to chain
         # these blocks are vaildated
         self.chain = []
+        self.lock = threading.Lock()
+
 
     def serialize(self):
         dict_chain = []

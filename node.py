@@ -27,13 +27,16 @@ class Node:
 		self.ip_address = ip
 		self.port = port
 		self.wallet = wallet.wallet()
-		self.chain = []
 		self.transaction_list = []
 		self.current_block = block.Block(0,0, [], difficulty)	# create a dummy block
+		self.temp_block = block.Block(0,0, [], difficulty)	# create a dummy block
 		self.ring = []
 		self.chain = blockchain.Blockchain()
 		self.capacity = capacity
 		self.difficulty = difficulty
+		self.has_conflict = False
+		self.total_mining_time = 0
+		self.total_minings = 0
 		
 
 		# utxos is a list of the current sum of all utxos for every wallet
@@ -81,8 +84,8 @@ class Node:
 			data['utxos'] = self.utxos
 			data['current_block'] = self.current_block.serialize()
 			data['current_chain'] = self.chain.serialize()
-			print(data['current_chain'])
-			print(json.dumps(data, indent=4))
+			#print(data['current_chain'])
+			#print(json.dumps(data, indent=4))
 			url = ip + ":" + port + "/current_chain"
 			r = requests.post(url, data = json.dumps(data))
 			
@@ -112,6 +115,10 @@ class Node:
 			self.chain.add_block_to_chain(self.current_block)
 			print("Genesis Block created and appended to blockchain")
 	
+	def create_new_block(self, difficulty, transaction_list):
+		new_block = block.Block(len(self.chain.chain), self.chain.chain[-1].hash, transaction_list, difficulty)
+		return new_block
+
 	def create_transaction(self, recipient, amount):
 
 		transaction_list = []
@@ -130,7 +137,7 @@ class Node:
 			start_time = time.time()
 			for i in range(len(self.ring)):
 				url = self.ring[i]["address"] + "/broadcast/transaction"
-				thread = threading.Thread(target=self.broadcast_transaction,args = (tx, url, start_time))
+				thread = threading.Thread(target=self.broadcast_transaction, args = (tx, url, start_time))
 				thread.start()
 				threads.append(thread)
 				#self.broadcast_transaction(tx, url, start_time)
@@ -153,13 +160,6 @@ class Node:
 		
 		#if resp.status_code == 200:
 		#	transaction.transaction_outputs = resp.json()["outputs"]
-		
-
-	def broadcast_block(self, block, url):
-		data={}
-		data['block'] = json.dumps(block)
-		data['sender'] = self.id
-		resp = requests.post(url, data)
 
 	def verify_signature(self, transaction):
 		key = RSA.importKey(unhexlify(transaction.sender_address))
@@ -182,7 +182,7 @@ class Node:
 			
 		
 		#print(valid)
-		print(self.verify_signature(transaction))
+		#print(self.verify_signature(transaction))
 		if (self.verify_signature(transaction) and valid):	
 			index = []
 			temp = [(i,utxo["id"]) for i,utxo in enumerate(self.utxos)]
@@ -234,16 +234,18 @@ class Node:
 		
 		self.current_block.transactions.append(transaction.serialize())
 		if(transaction.sender_address != "0"):
-			#print('transaction_list_length: ' + str(len(self.current_block.transactions)))
 			if len(self.current_block.transactions) == capacity:
-				print('Current block reached its limit. Time to mine!')
-				#print(self.current_block.serialize())
-				#thread = threading.Thread(target=self.mine_block(int(difficulty)))
-				#thread.start()
-				if self.mine_block(int(difficulty)):
+				
+				if(self.current_block.index == 0):
 					self.chain.add_block_to_chain(self.current_block)
-					print("Block appended to blockchain")
+					print("Added Genesis Block to chain")
+				else:
+					print('Current block reached its limit. Time to mine!')
+					if self.mine_block(int(difficulty)):
+						self.chain.add_block_to_chain(self.current_block)
+						print("Block appended to blockchain")				
 
+				self.create_new_block(difficulty, [])
 
 		# we should write some code for handling a full block
 		# when trying to add a new transaction to current block
@@ -269,19 +271,48 @@ class Node:
 
 		self.current_block.difficulty = difficulty
 
+		start_time = time.time()
+		flag = False
+		
+		#print(self.current_block.nonce)
+		
 
-		print(self.current_block.nonce)
-		while self.count_zeros(self.current_block.hash) < self.current_block.difficulty:
-			self.current_block.nonce = self.current_block.nonce + 1 
-			self.current_block.hash = self.current_block.hashing()
-			#print(self.current_block.hash)
+		while True:
+			if(self.count_zeros(self.current_block.hash) < self.current_block.difficulty):
+				self.current_block.nonce = self.current_block.nonce + 1 
+				self.current_block.hash = self.current_block.hashing()
+			else:
+				flag = True
+				break;
 
-		print('NONCE FOUND: ')
-		print(self.current_block.nonce)
-		#print(self.current_block.serialize())
+		if(flag):
+			mining_time = time.time()-start_time
+			print('NONCE FOUND: ')
+			print(self.current_block.nonce)
+			threads = []
+			for i in range(len(self.ring)):
+				url = self.ring[i]["address"] + "/broadcast/block"
+				thread = threading.Thread(target=self.broadcast_block, args = (self.current_block, url))
+				thread.start()
+				threads.append(thread)
 
-		return True
+			for t in threads:
+					t.join()
+			# we use these fields to calculate average block time: total_mining_time / total_minings
+			self.total_mining_time += mining_time
+			self.total_minings += 1
 
+			return 1
+
+		else:
+			print("Block was not mined")
+			return 0
+
+	def broadcast_block(self, block, url):
+		data = {}
+		data['block'] = block.serialize()
+		data['sender'] = self.id
+		resp = requests.post(url, data = json.dumps(data))		
 
 	def count_zeros(self, hash):
 		counter = 0
@@ -294,5 +325,26 @@ class Node:
 				break
 		return counter
 
+	def validate_block(self, block, difficulty, chain):
 
-
+		if block.index != 0:
+			if block.index > len(chain.chain):
+				index = -1
+			else:
+				index = block.index - 1
+			
+			if block.previous_hash == chain.chain[index].hash:
+				return 1
+			elif block.previous_hash != chain.chain[index].hash:
+				self.has_conflict = True
+				print("Resolving blockchain conflicts...\n")
+				
+				if self.resolve_conflict(difficulty):
+					self.has_conflict = False
+				
+				return 0
+		# we get here only on genesis block
+		return 1
+	
+	def resolve_conflict(self, difficulty):
+		print("Conflcit resolved")

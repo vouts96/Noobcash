@@ -88,7 +88,7 @@ def get_transaction():
 		#print("SENDER ADDRESS")
 		#print(new_node.current_block.transactions[0]['sender_address'])
 		# clear current block 
-		new_node.current_block = block.Block(0,0, [], difficulty) 
+		new_node.current_block = new_node.create_new_block(difficulty, []) 
 
 
 	# Decode incoming transaction
@@ -97,8 +97,8 @@ def get_transaction():
 	#print(trans)
 	tx = transaction.Transaction(0, new_node.wallet.private_key, 0, 0, [])
 	tx.get_created_transaction(trans["sender_address"], trans["receiver_address"], trans["amount"], trans["transaction_inputs"], trans["transaction_outputs"], trans["signature"], trans["transaction_id"], trans["timestamp"])
-	print("Sender address is:", trans["sender_address"])
-	print("Receiver address is:", trans["receiver_address"])
+	#print("Sender address is:", trans["sender_address"])
+	#print("Receiver address is:", trans["receiver_address"])
 	
 	# Insert incoming transaction to node's transaction list, check "/" endpoint
 	if not new_node.transaction_list or tx.timestamp > new_node.transaction_list[0].timestamp:
@@ -118,7 +118,50 @@ def get_transaction():
 		print('Transaction added to current block')
 		
 	return jsonify({'result': result})
+
+@app.route("/broadcast/block", methods = ['POST'])
+def get_block():
+	data = request.get_json(force=True)
+	bl = data['block']
+	new_node.temp_block.get_created_block(bl['index'], bl['timestamp'], bl['transactions'], bl['previous_hash'], bl['nonce'], bl['hash'])
+
+	transaction_lock.acquire()
+
+	'''
+	temp = [transaction.transaction_id for transaction in new_node.temp_block.transactions]
+	for t in temp:
+		if t in lock_list[::-1]:
+			transaction_lock.release()
+			return ("Already broadcasted")
+	'''
+	while(new_node.has_conflict):
+		pass
 	
+	new_node.chain.lock.acquire()
+
+	if new_node.temp_block.index in [block.index for block in new_node.chain.chain]:
+		new_node.chain.lock.release()
+		transaction_lock.release()
+		return ("Already broadcasted")
+
+	
+	#lock_list.extend(temp)
+
+	transaction_lock.release()
+
+	if new_node.validate_block(new_node.temp_block, difficulty, new_node.chain):
+		'''
+		for t in new_node.temp_block.transactions:
+			#new_node.utxo_lock.acquire()
+			new_node.validate_transaction(t)
+			#new_node.utxo_lock.release()
+		'''
+		new_node.chain.add_block_to_chain(new_node.temp_block)
+		print("Block added to chain")
+
+	new_node.chain.lock.release()
+
+	return "Block validated"
 
 @app.route("/current_chain", methods = ['GET', 'POST'])
 def current_data():
@@ -133,7 +176,6 @@ def current_data():
 		#print(data['current_block'])
 		cb = data['current_block']	# current block shortcut 
 		#new_node.current_block.get_created_block(cb['index'], cb['timestamp'], cb['transactions'], cb['previous_hash'], cb['nonce'], cb['hash'])
-		#new_node.current_block = data['current_block']
 		#new_node.chain.add_block_to_chain(new_node.current_block)
 		#print(len(new_node.chain.chain))
 		#print('current_chain')
@@ -141,7 +183,7 @@ def current_data():
 		new_node.chain.get_created_chain(data['current_chain'])
 		print(len(new_node.chain.chain))
 		print("Genesis Block appended to blockchain")
-		new_node.current_block = block.Block(0,0, [], difficulty)
+		new_node.current_block = new_node.create_new_block(difficulty, [])
 		print("Current block cleared.")
 
 		return "block posted"
@@ -192,6 +234,12 @@ if __name__ == "__main__":
 	if result_of_check == 0:
 		print("Port " + str(arguments.port) + " is in use.")
 		sys.exit("Bad port")
+
+	global lock_list
+	lock_list = []
+
+	global transaction_lock
+	transaction_lock = threading.Lock()
 
 	global new_node 
 	new_node = node.Node(arguments.node, arguments.N, "http://localhost", str(arguments.port), arguments.cap, arguments.diff)
