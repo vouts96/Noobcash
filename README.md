@@ -37,3 +37,31 @@ activate the env by running:
 and start a new node server also by running:
 
 	python node.py
+
+## Virtual Machines Setup
+### Machine 1:
+    Hostname: master
+    Password: master
+    Public IP: 83.212.80.50
+    Local IP: 192.168.0.1
+
+### Machine 2:
+    Hostname: slave1
+    Password: slave1
+    Local IP: 192.168.0.2
+
+### Machine 3:
+    Hostname: slave2
+    Password: slave2
+    Local IP: 192.168.0.3
+
+### Machine 4:
+    Hostname: slave3
+    Password: slave3
+    Local IP: 192.168.0.4
+
+### Machine 5:
+    Hostname: slave4
+    Password: slave4
+    Local IP: 192.168.0.5
+    
