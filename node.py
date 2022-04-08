@@ -37,6 +37,12 @@ class Node:
 		self.has_conflict = False
 		self.total_mining_time = 0
 		self.total_minings = 0
+		self.blockchain_length = []
+		self.blockchain_length_lock = threading.Lock()
+		self.utxos_lock = threading.Lock()
+		self.transaction_to_block_lock = threading.Lock()
+		self.transaction_lock = threading.Lock()
+
 		
 
 		# utxos is a list of the current sum of all utxos for every wallet
@@ -96,9 +102,8 @@ class Node:
 					data = {}
 					data = {"ring": json.dumps(self.ring)}
 					resp = requests.post(url, data)
-					
-				return resp
-
+				
+			
 			if(len(self.ring) > self.N ):
 				print("Maximum number of nodes reached")
 
@@ -142,6 +147,9 @@ class Node:
 				threads.append(thread)
 				#self.broadcast_transaction(tx, url, start_time)
 				#self.add_transaction_to_block(tx, self.capacity, self.difficulty)
+
+			for t in threads:
+				t.join()
 
 		else:
 			return "Error creating transaction"
@@ -192,7 +200,6 @@ class Node:
 					if x==utxo_in["id"]:
 						index.append(i)
 
-			# something's wrong here 
 			idx = [i for i in range(len(self.utxos)) if i not in index]
 			# ----------------------s
 			change_utxo = {}
@@ -232,32 +239,26 @@ class Node:
 
 	def add_transaction_to_block(self, transaction, capacity, difficulty):
 		
+		self.transaction_to_block_lock.acquire()
+
 		self.current_block.transactions.append(transaction.serialize())
 		if(transaction.sender_address != "0"):
 			if len(self.current_block.transactions) == capacity:
-				
-				if(self.current_block.index == 0):
-					self.chain.add_block_to_chain(self.current_block)
-					print("Added Genesis Block to chain")
-				else:
+				if(self.current_block.index != 0):
 					print('Current block reached its limit. Time to mine!')
 					if self.mine_block(int(difficulty)):
-						self.chain.add_block_to_chain(self.current_block)
 						print("Block appended to blockchain")				
 
-				self.create_new_block(difficulty, [])
-
-		# we should write some code for handling a full block
-		# when trying to add a new transaction to current block
-		# e.g. start to mine the block etc.
-
+				#self.current_block = self.create_new_block(difficulty, [])
+			
+		self.transaction_to_block_lock.release()
 
 	def mine_block(self, difficulty):
 		length = len(self.chain.chain)
 
 		# set index for current block based on the last block index of blockchain 
-		index = self.chain.chain[length-1].index + 1
-		self.current_block.index = index
+		#index = self.chain.chain[length-1].index + 1
+		#self.current_block.index = index
 
 		# get previous hash for current block from last block of blockchain
 		previous_hash = self.chain.chain[length-1].hash
@@ -283,7 +284,7 @@ class Node:
 				self.current_block.hash = self.current_block.hashing()
 			else:
 				flag = True
-				break;
+				break
 
 		if(flag):
 			mining_time = time.time()-start_time
@@ -346,5 +347,95 @@ class Node:
 		# we get here only on genesis block
 		return 1
 	
+	def get_lengths(self, data, url):
+		resp = requests.post(url)
+		if resp.status_code == 200:
+			print("=====================get_length succeeds=====================")
+			self.blockchain_length_lock.acquire()
+			self.blockchain_length.append({"length":json.loads(resp.text)["length"],"id":json.loads(resp.text)["id"], "conflict":json.loads(resp.text)["conflict"]})
+			self.blockchain_length_lock.release()
+					 
+		return 1
+
 	def resolve_conflict(self, difficulty):
-		print("Conflcit resolved")
+
+		data = {}
+		data["address"] = self.ring[self.id]["address"]
+		i = 0
+		for t in self.current_block.transactions:
+			t = transaction.Transaction(0, self.wallet.private_key, 0, 0, [])
+			t.get_created_transaction(t.sender_address, t.receiver_address, t.amount, t.transaction_inputs, t.transaction_outputs, t.signature, t.transaction_id, t.timestamp)
+			self.current_block.transactions[i] = t
+			i += 1
+
+		count = 0
+		while(count<10):
+			threads = []
+			self.lengths = []
+			for i in range(len(self.ring)):
+				if i != self.id:
+					url = self.ring[i]["address"] + "/blockchain/length"
+					thread = threading.Thread(target=self.get_lengths, args=(data,url))
+					thread.start()
+					threads.append(thread)
+			
+			for thread in threads:
+				thread.join()
+			count+=1
+		
+			s = 0
+			for l in self.blockchain_length:
+				s += l["conflict"]
+			
+			if s == 4 :
+				self.blockchain_length.append({"length":len(self.chain.chain),"id":self.id,"conflict":True})
+				self.blockchain_length = sorted(self.blockchain_length,key=lambda k: k["length"],reverse=True)
+				#print(colored("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------",'red'))
+				#print(colored("-----------------------------------------------------------------------------EVERYONE IS IN CONFLICT---------------------------------------------------------------------",'red'))
+				#print(colored("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------",'red'))
+				break
+			else:
+				self.blockchain_length = [length for length in self.blockchain_length if length["conflict"] == False]
+				self.blockchain_length = sorted(self.blockchain_length,key=lambda k: k["length"],reverse=True)
+				if self.blockchain_length[0]["length"] > len(self.chain.chain):
+					break
+		
+		indexes = [int(length["id"]) for length in self.blockchain_length if length["length"] == self.blockchain_length[0]["length"]]
+		index = min(indexes)
+		
+		for t in self.current_block.transactions:
+			t = transaction.Transaction(0, self.wallet.private_key, 0, 0, [])
+			t.get_created_transaction(t.sender_address, t.receiver_address, t.amount, t.transaction_inputs, t.transaction_outputs, t.signature, t.transaction_id, t.timestamp)
+
+		if index == self.id:
+			self.utxos_lock.acquire()
+			for i in range(len(self.utxos)):
+				for t in self.current_block.transactions:
+					if self.utxos[i]["previous_trans_id"] == t.transaction_id:
+						self.utxos[i]["recipient"] = t.sender_address
+						break
+
+			self.utxos_lock.release()
+			
+		else:
+			url = self.ring[index]["address"] + "/blockchain/request"
+			resp = requests.post(url)
+				
+			result = json.loads(json.loads(resp.text)["blocks"])
+
+			blocks = []
+			transactions = []
+			for i,b in enumerate(result[::-1]):
+				blocks.insert(0,b)
+				trans = blocks[0].transactions + transactions
+				for j,b2 in enumerate(self.chain.chain[::-1]):
+					if b2.hash == blocks[0].previous_hash:
+						self.chain.chain=self.chain.chain[:len(self.chain.chain)-j]
+						self.chain.chain.extend(blocks)
+						self.utxos_lock.acquire()
+						for t in trans:
+							self.validate_transaction(t)
+						self.utxos_lock.release()
+						return 1
+
+		return 1

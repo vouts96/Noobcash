@@ -40,15 +40,16 @@ def create_node():
 @app.route("/", methods = ['GET', 'POST'])
 def index():
 	return json.dumps(
-			{'len': len(new_node.ring),
+			{'ring length': len(new_node.ring),
 			'ip': new_node.ip_address, 
 			'port': new_node.port, 
-			'NBC': new_node.balance(new_node.wallet.public_key, new_node.utxos), 
+			'NBC': new_node.balance(new_node.wallet.public_key, new_node.utxos),
+			'transactions in current block': len(new_node.current_block.transactions),
 			'ring': new_node.ring,
 			'transaction_list': new_node.transaction_list,
 			'UTXOS': new_node.utxos,
-			'current_block': new_node.current_block.serialize()
-			#'CHAIN': new_node.chain.serialize()
+			'current_block': new_node.current_block.serialize(),
+			'CHAIN': new_node.chain.serialize()
 			}, indent=4)
 
 
@@ -82,13 +83,14 @@ def get_transaction():
 	# Fourth stage: If transaction is valid, add it to block
 
 	print("Transaction broadcasted successfully!")
-
+	
 	# if bootstrap clear current block from genesis
 	if arguments.node == 1 and new_node.current_block.previous_hash == 1:
 		#print("SENDER ADDRESS")
 		#print(new_node.current_block.transactions[0]['sender_address'])
 		# clear current block 
 		new_node.current_block = new_node.create_new_block(difficulty, []) 
+	
 
 
 	# Decode incoming transaction
@@ -100,6 +102,7 @@ def get_transaction():
 	#print("Sender address is:", trans["sender_address"])
 	#print("Receiver address is:", trans["receiver_address"])
 	
+	new_node.transaction_lock.acquire()
 	# Insert incoming transaction to node's transaction list, check "/" endpoint
 	if not new_node.transaction_list or tx.timestamp > new_node.transaction_list[0].timestamp:
 		new_node.transaction_list.append(tx)
@@ -108,27 +111,42 @@ def get_transaction():
 		while(tx.timestamp > new_node.transaction_list[i].timestamp):
 			i+=1
 		new_node.transaction_list.insert(i,tx)
+	
+	new_node.transaction_lock.release()
 
 	# Validate transaction & If transaction is valid, add it to block
+	new_node.transaction_lock.acquire()
 	tx = new_node.transaction_list.pop(0)
+	new_node.utxos_lock.acquire()
 	result = []
 	if new_node.validate_transaction(tx):
+		new_node.utxos_lock.release()
 		result = tx.transaction_outputs
 		new_node.add_transaction_to_block(tx, capacity, difficulty)
 		print('Transaction added to current block')
-		
+	else:
+		new_node.utxos_lock.release()
+	
+	new_node.transaction_lock.release()
+
+
 	return jsonify({'result': result})
 
 @app.route("/broadcast/block", methods = ['POST'])
 def get_block():
 	data = request.get_json(force=True)
 	bl = data['block']
-	new_node.temp_block.get_created_block(bl['index'], bl['timestamp'], bl['transactions'], bl['previous_hash'], bl['nonce'], bl['hash'])
-
-	transaction_lock.acquire()
+	new_node.current_block.get_created_block(bl['index'], bl['timestamp'], bl['transactions'], bl['previous_hash'], bl['nonce'], bl['hash'])
+	i = 0
+	for t in new_node.current_block.transactions:
+		t = transaction.Transaction(0, new_node.wallet.private_key, 0, 0, [])
+		t.get_created_transaction(t.sender_address, t.receiver_address, t.amount, t.transaction_inputs, t.transaction_outputs, t.signature, t.transaction_id, t.timestamp)
+		new_node.current_block.transactions[i] = t
+		i += 1
+	#transaction_lock.acquire()
 
 	'''
-	temp = [transaction.transaction_id for transaction in new_node.temp_block.transactions]
+	temp = [transaction.transaction_id for transaction in new_node.current_block.transactions]
 	for t in temp:
 		if t in lock_list[::-1]:
 			transaction_lock.release()
@@ -138,26 +156,28 @@ def get_block():
 		pass
 	
 	new_node.chain.lock.acquire()
-
-	if new_node.temp_block.index in [block.index for block in new_node.chain.chain]:
-		new_node.chain.lock.release()
-		transaction_lock.release()
-		return ("Already broadcasted")
+	print("Index of block to be validated is: ", new_node.current_block.index)
+	for block in new_node.chain.chain:
+		if new_node.current_block.index == block.index :
+			new_node.chain.lock.release()
+			#transaction_lock.release()
+			return ("Already broadcasted")
 
 	
 	#lock_list.extend(temp)
 
-	transaction_lock.release()
+	#transaction_lock.release()
 
-	if new_node.validate_block(new_node.temp_block, difficulty, new_node.chain):
+	if new_node.validate_block(new_node.current_block, difficulty, new_node.chain):
 		'''
-		for t in new_node.temp_block.transactions:
+		for t in new_node.current_block.transactions:
 			#new_node.utxo_lock.acquire()
 			new_node.validate_transaction(t)
 			#new_node.utxo_lock.release()
 		'''
-		new_node.chain.add_block_to_chain(new_node.temp_block)
-		print("Block added to chain")
+		new_node.chain.add_block_to_chain(new_node.current_block)
+		new_node.current_block = new_node.create_new_block(difficulty, [])
+
 
 	new_node.chain.lock.release()
 
@@ -183,13 +203,46 @@ def current_data():
 		new_node.chain.get_created_chain(data['current_chain'])
 		print(len(new_node.chain.chain))
 		print("Genesis Block appended to blockchain")
-		new_node.current_block = new_node.create_new_block(difficulty, [])
+		#new_node.current_block = new_node.create_new_block(difficulty, [])
 		print("Current block cleared.")
 
 		return "block posted"
 	# block = jsonpickle.decode(request.form["current_block"])
 	#return block
 
+@app.route('/blockchain/length', methods=['POST'])
+def blockchain_length():
+	flag = False
+	if not new_node.chain.lock.locked():
+		flag = True
+		new_node.chain.lock.acquire()
+	data = {}
+	data["length"] = len(new_node.chain.chain)
+	data["conflict"] = new_node.has_conflict
+	data["id"] = new_node.id
+	if flag:
+		new_node.chain.lock.release()
+	
+	return jsonify(data), 200
+
+@app.route('/blockchain/request', methods=['POST'])
+def blockchain_request():
+	new_node.chain.lock.acquire()	
+
+	data = {}
+	temp = [b.serialize() for b in new_node.chain.chain]
+	data["blocks"]=json.dumps(temp)
+	if new_node.chain.lock.locked():
+		new_node.chain.lock.release()
+	return jsonify(data), 200
+
+
+@app.route('/mining/stats',methods = ['GET'])
+def get_stats():
+	response = {}
+	response["total_mining_time"] = new_node.total_mining_time
+	response["total_minings"] = new_node.total_minings
+	return jsonify(response), 200
 
 @app.route("/get_balance", methods=['GET'])
 def get_balance():
@@ -205,14 +258,22 @@ def get_view():
 
 @app.route("/create_transaction_cli", methods=['POST'])
 def create_transaction_cli():
-	recipient = request.form["recipient"]
-	amount = request.form["amount"]
+	data = request.get_json(force=True)
+	recipient = data['recipient']
+	#recipient = request.form["recipient"]
+	amount = data['amount']
+	#amount = request.form["amount"]
+	print("Data Collected successfully")
 	if recipient != new_node.ip_address:
-		for url in new_node.ring:
-			if url["address"] == recipient:
-				return new_node.create_transaction(recipient, int(amount))
-		
-	
+		for r in new_node.ring:
+			if r["id"] == int(recipient):
+				return new_node.create_transaction(new_node.ring[int(recipient)]["public_key"], int(amount))
+			else:
+				print("Address not in ring")
+		return "Address not in ring"
+	else:
+		print("Cannot send to myself")
+		return "Cannot send to myself"
 
 
 if __name__ == "__main__":
