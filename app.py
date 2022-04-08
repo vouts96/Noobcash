@@ -40,7 +40,8 @@ def create_node():
 @app.route("/", methods = ['GET', 'POST'])
 def index():
 	return json.dumps(
-			{'ring length': len(new_node.ring),
+			{'id': new_node.id,
+			'ring length': len(new_node.ring),
 			'ip': new_node.ip_address, 
 			'port': new_node.port, 
 			'NBC': new_node.balance(new_node.wallet.public_key, new_node.utxos),
@@ -69,6 +70,7 @@ def newnode():
 @app.route("/broadcast/ring", methods = ['POST'])
 def broadcast_ring():
 	new_node.ring = json.loads(request.form["ring"])
+	new_node.id = len(new_node.ring)
 	print("All nodes updated")
 	return "All nodes updated"
 
@@ -258,16 +260,14 @@ def get_view():
 
 @app.route("/create_transaction_cli", methods=['POST'])
 def create_transaction_cli():
-	data = request.get_json(force=True)
-	recipient = data['recipient']
-	#recipient = request.form["recipient"]
-	amount = data['amount']
-	#amount = request.form["amount"]
+	recipient = request.form['recipient']
+	amount = request.form['amount']
 	print("Data Collected successfully")
 	if recipient != new_node.ip_address:
+		receiver_id = recipient[-1]
 		for r in new_node.ring:
-			if r["id"] == int(recipient):
-				return new_node.create_transaction(new_node.ring[int(recipient)]["public_key"], int(amount))
+			if r["id"] == int(receiver_id):
+				return new_node.create_transaction(new_node.ring[int(receiver_id)]["public_key"], int(amount))
 			else:
 				print("Address not in ring")
 		return "Address not in ring"

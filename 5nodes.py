@@ -22,7 +22,7 @@ def read_and_post(file, sender, num_nodes):
 		amount = line[1]
 		
 		data = {}
-		data["recipient"] = receiver_id
+		data["recipient"] = "http://localhost:500" + receiver_id
 		data["amount"] = amount
 		print("receiver",receiver_id)
 		print("sender",sender)		
@@ -31,7 +31,7 @@ def read_and_post(file, sender, num_nodes):
 		url = ip+":"+port+"/create_transaction_cli"
 		print("Transaction number",count,"of Node number",sender,"\n")
 		count+=1
-		resp = requests.post(url,data = json.dumps(data))
+		resp = requests.post(url,data)
 		#return resp
     
 if __name__ == '__main__':
