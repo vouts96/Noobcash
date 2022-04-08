@@ -182,6 +182,7 @@ if __name__ == "__main__":
 	parser.add_argument('cap', type=int, help='enter block capacity 1, 5 or 10')
 	parser.add_argument('diff', type=int, help='nonce difficulty digits (enter 4 or 5), hexadecimal')
 	parser.add_argument('N', type=int, help='total number of nodes')
+	parser.add_argument('ip_address', type=str, help='ip_address')
 	parser.add_argument('port', type=int, help='port')
 	global arguments
 	arguments = parser.parse_args()
@@ -196,7 +197,8 @@ if __name__ == "__main__":
 		sys.exit("Bad port")
 
 	global new_node 
-	new_node = node.Node(arguments.node, arguments.N, "http://localhost", str(arguments.port), arguments.cap, arguments.diff)
+	arguments.ip_address = "http://" + arguments.ip_address
+	new_node = node.Node(arguments.node, arguments.N, arguments.ip_address, str(arguments.port), arguments.cap, arguments.diff)
 	
 	global capacity
 	capacity = arguments.cap

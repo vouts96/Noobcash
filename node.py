@@ -55,7 +55,7 @@ class Node:
 			data["public_key"] = self.wallet.public_key
 			data["ip"] = self.ip_address
 			data["port"] = self.port
-			url = "http://localhost:5000/newnode"
+			url = "http://192.168.0.1:5000/newnode"
 			resp = requests.post(url, data)
 			return resp
 
