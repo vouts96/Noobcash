@@ -214,4 +214,4 @@ if __name__ == "__main__":
 		thread.start()
 		#create_node()
 	
-	app.run(host='localhost', port=arguments.port, threaded = True)
+	app.run(host='http://192.168.0.1', port=arguments.port, threaded = True)
