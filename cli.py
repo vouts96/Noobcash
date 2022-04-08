@@ -32,13 +32,13 @@ def cli():
 	if(arguments[1] == "help"):
 		print_help()
 	elif(arguments[1] == "view"):
-		view_resp = requests.get('http://localhost:5000/get_view')
+		view_resp = requests.get('http://192.168.0.1:5000/get_view')
 		view = json.dumps(json.loads(view_resp.content.decode('ascii')), indent=4)
 		print("Transactions of the last validated block:")
 		print(view)
 
 	elif(arguments[1] == "balance"):
-		balance_resp = requests.get('http://localhost:5000/get_balance')
+		balance_resp = requests.get('http://192.168.0.1:5000/get_balance')
 		balance = json.loads(balance_resp.content.decode('ascii'))['balance']
 		print("My balance is: " + str(balance))
 	elif(arguments[1] == "t"):
@@ -55,7 +55,7 @@ def cli():
 		data["recipient"] = arguments[2]
 		data["amount"] = arguments[3]
 
-		trans_resp = requests.post("http://localhost:5000/create_transaction_cli", data)
+		trans_resp = requests.post("http://192.168.0.1:5000/create_transaction_cli", data)
 		print(trans_resp.content)
 		
 
